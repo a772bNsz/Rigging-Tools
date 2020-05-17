@@ -1,5 +1,5 @@
 """
-test for maya version
+test for control shapes
 """
 
 import unittest
@@ -14,19 +14,21 @@ class ControlShapesTest(unittest.TestCase):
         cls.cs = ControlShapes()
         pm.newFile(f=1)
 
+    def tearDown(self):
+        pm.select(cl=1)
+
     def test_replace(self):
-        replace = pm.polyTorus()[0]  # active selection
-        shp = self.cs.cube()
-        self.assertTrue(self.cs._replace(),
+        sel = pm.polyTorus()[0]
+        self.assertTrue(self.cs.circle_nose(),
                         "did not replace selection with shape")
 
-    def test_locator_to_cube(self):
-        replace = pm.spaceLocator(p=[10, 10, 10])  # active selection
-        shp = self.cs.cube()
-        self.cs._replace()
-        pos = shp.getTranslation(space="world")
-        self.assertEqual(pos, [10, 10, 10],
-                         "shape position is not correct in world space")
+    def test_cube_to_locator(self):
+        sel = pm.spaceLocator()  # active selection
+        sel.t.set([10, 10, 10])
+        self.cs.circle_nose()
+        pos = self.cs.shape.getTranslation(space="world")
+        self.assertTrue(all(map(lambda x: x == 10, pos)),
+                        "shape position is not correct in world space")
 
     def test_multi_shape(self):
         self.assertTrue(self.cs.gear(),
@@ -40,5 +42,6 @@ class ControlShapesTest(unittest.TestCase):
 
 if __name__ == '__main__':
     from maya import standalone
+
     standalone.initialize(name='python')
     unittest.main(verbosity=2, failfast=1)

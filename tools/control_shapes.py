@@ -14,6 +14,9 @@ def add_shape(shapes):
     for shp in sorted(shapes):
         print """
     def {0}(self, name="{0}"):
+        if pm.ls(sl=1):
+            self.sel = pm.ls(sl=1)[0]
+            
         shapes = [""".format(shp)
 
         for s in shp.getShapes():
@@ -52,35 +55,47 @@ def add_shape(shapes):
 
         print """        ]
         {}
-        self.shape = shapes[0]  
+        self.shape = shapes[0]
+        
+        if self.sel:
+            self._replace()
+            self.sel = None
         return self.shape""".format(add_on)
     return
 
 
 class ControlShapes:
     def __init__(self):
-        self.shape = None
+        self.shape = self.sel = None
         return
 
     def _replace(self):
-        sel = pm.ls(sl=1)
-        if len(sel) == 1:
-            trg = map(lambda s: s[1] - s[0], zip(*sel.getBoundingBox()))
-            rep = map(lambda s: s[1] - s[0], zip(*self.shape.getBoundingBox()))
+        trg = map(lambda s: s[1] - s[0], zip(*self.sel.getBoundingBox()))
+        rep = map(lambda s: s[1] - s[0], zip(*self.shape.getBoundingBox()))
 
-            xyz = map(lambda t, r: t/r, trg, rep)
+        xyz = []
+        for t, r in zip(trg, rep):
+            try:
+                xyz += [round(t / r, 2)]
+            except ZeroDivisionError:
+                xyz += [round(t, 2)]
 
-            self.shape.scale.set(xyz)
-            pm.makeIdentity(self.shape, scale=1)
+        self.shape.scale.set(xyz)
+        pm.makeIdentity(self.shape, scale=1, apply=1)
 
-            pm.select(self.shape.getShapes(), sel)
-            pm.parent(r=1, s=1)
-            pm.delete(self.shape)
+        pm.delete(self.sel.getShapes())
+        pm.select(self.shape.getShapes(), self.sel)
+        pm.parent(r=1, s=1)
+        pm.delete(self.shape)
 
-            self.shape = sel
-        return sel
+        pm.select(self.sel)
+        self.shape = self.sel
+        return self.sel
 
     def arrow(self, name="arrow"):
+        if pm.ls(sl=1):
+            self.sel = pm.ls(sl=1)[0]
+
         shapes = [
             pm.curve(
                 n=name, d=1, periodic=0,
@@ -92,9 +107,16 @@ class ControlShapes:
         ]
 
         self.shape = shapes[0]
+
+        if self.sel:
+            self._replace()
+            self.sel = None
         return self.shape
 
     def arrow_circle(self, name="arrow_circle"):
+        if pm.ls(sl=1):
+            self.sel = pm.ls(sl=1)[0]
+
         shapes = [
             pm.curve(
                 n=name, d=3, periodic=0,
@@ -130,9 +152,16 @@ class ControlShapes:
         ]
 
         self.shape = shapes[0]
+
+        if self.sel:
+            self._replace()
+            self.sel = None
         return self.shape
 
     def arrow_large(self, name="arrow_large"):
+        if pm.ls(sl=1):
+            self.sel = pm.ls(sl=1)[0]
+
         shapes = [
             pm.curve(
                 n=name, d=1, periodic=0,
@@ -145,9 +174,16 @@ class ControlShapes:
         ]
 
         self.shape = shapes[0]
+
+        if self.sel:
+            self._replace()
+            self.sel = None
         return self.shape
 
     def arrow_medium(self, name="arrow_medium"):
+        if pm.ls(sl=1):
+            self.sel = pm.ls(sl=1)[0]
+
         shapes = [
             pm.curve(
                 n=name, d=1, periodic=0,
@@ -160,9 +196,16 @@ class ControlShapes:
         ]
 
         self.shape = shapes[0]
+
+        if self.sel:
+            self._replace()
+            self.sel = None
         return self.shape
 
     def arrow_small(self, name="arrow_small"):
+        if pm.ls(sl=1):
+            self.sel = pm.ls(sl=1)[0]
+
         shapes = [
             pm.curve(
                 n=name, d=1, periodic=0,
@@ -173,9 +216,16 @@ class ControlShapes:
         ]
 
         self.shape = shapes[0]
+
+        if self.sel:
+            self._replace()
+            self.sel = None
         return self.shape
 
     def axis(self, name="axis"):
+        if pm.ls(sl=1):
+            self.sel = pm.ls(sl=1)[0]
+
         shapes = [
             pm.curve(
                 n=name, d=1, periodic=0,
@@ -187,9 +237,16 @@ class ControlShapes:
         ]
 
         self.shape = shapes[0]
+
+        if self.sel:
+            self._replace()
+            self.sel = None
         return self.shape
 
     def axis_bold(self, name="axis_bold"):
+        if pm.ls(sl=1):
+            self.sel = pm.ls(sl=1)[0]
+
         shapes = [
             pm.curve(
                 n=name, d=1, periodic=0,
@@ -230,9 +287,16 @@ class ControlShapes:
         ]
 
         self.shape = shapes[0]
+
+        if self.sel:
+            self._replace()
+            self.sel = None
         return self.shape
 
     def circle_arrow_up(self, name="circle_arrow_up"):
+        if pm.ls(sl=1):
+            self.sel = pm.ls(sl=1)[0]
+
         shapes = [
             pm.curve(
                 n=name, d=3, periodic=0,
@@ -259,9 +323,16 @@ class ControlShapes:
         ]
 
         self.shape = shapes[0]
+
+        if self.sel:
+            self._replace()
+            self.sel = None
         return self.shape
 
     def circle_nose(self, name="circle_nose"):
+        if pm.ls(sl=1):
+            self.sel = pm.ls(sl=1)[0]
+
         shapes = [
             pm.curve(
                 n=name, d=3, periodic=0,
@@ -280,9 +351,16 @@ class ControlShapes:
         ]
 
         self.shape = shapes[0]
+
+        if self.sel:
+            self._replace()
+            self.sel = None
         return self.shape
 
     def circle_spikes(self, name="circle_spikes"):
+        if pm.ls(sl=1):
+            self.sel = pm.ls(sl=1)[0]
+
         shapes = [
             pm.curve(
                 n=name, d=3, periodic=0,
@@ -320,9 +398,16 @@ class ControlShapes:
         ]
 
         self.shape = shapes[0]
+
+        if self.sel:
+            self._replace()
+            self.sel = None
         return self.shape
 
     def circle_spikes_long(self, name="circle_spikes_long"):
+        if pm.ls(sl=1):
+            self.sel = pm.ls(sl=1)[0]
+
         shapes = [
             pm.curve(
                 n=name, d=3, periodic=0,
@@ -360,9 +445,16 @@ class ControlShapes:
         ]
 
         self.shape = shapes[0]
+
+        if self.sel:
+            self._replace()
+            self.sel = None
         return self.shape
 
     def cone(self, name="cone"):
+        if pm.ls(sl=1):
+            self.sel = pm.ls(sl=1)[0]
+
         shapes = [
             pm.curve(
                 n=name, d=1, periodic=0,
@@ -385,9 +477,16 @@ class ControlShapes:
         ]
 
         self.shape = shapes[0]
+
+        if self.sel:
+            self._replace()
+            self.sel = None
         return self.shape
 
     def cross(self, name="cross"):
+        if pm.ls(sl=1):
+            self.sel = pm.ls(sl=1)[0]
+
         shapes = [
             pm.curve(
                 n=name, d=1, periodic=0,
@@ -398,9 +497,16 @@ class ControlShapes:
         ]
 
         self.shape = shapes[0]
+
+        if self.sel:
+            self._replace()
+            self.sel = None
         return self.shape
 
     def cube(self, name="cube"):
+        if pm.ls(sl=1):
+            self.sel = pm.ls(sl=1)[0]
+
         shapes = [
             pm.curve(
                 n=name, d=1, periodic=0,
@@ -419,9 +525,16 @@ class ControlShapes:
         ]
 
         self.shape = shapes[0]
+
+        if self.sel:
+            self._replace()
+            self.sel = None
         return self.shape
 
     def cube_sphere(self, name="cube_sphere"):
+        if pm.ls(sl=1):
+            self.sel = pm.ls(sl=1)[0]
+
         shapes = [
             pm.curve(
                 n=name, d=3, periodic=0,
@@ -462,9 +575,16 @@ class ControlShapes:
         ]
 
         self.shape = shapes[0]
+
+        if self.sel:
+            self._replace()
+            self.sel = None
         return self.shape
 
     def four_arrow(self, name="four_arrow"):
+        if pm.ls(sl=1):
+            self.sel = pm.ls(sl=1)[0]
+
         shapes = [
             pm.curve(
                 n=name, d=1, periodic=0,
@@ -488,9 +608,16 @@ class ControlShapes:
         ]
 
         self.shape = shapes[0]
+
+        if self.sel:
+            self._replace()
+            self.sel = None
         return self.shape
 
     def four_arrow_circle(self, name="four_arrow_circle"):
+        if pm.ls(sl=1):
+            self.sel = pm.ls(sl=1)[0]
+
         shapes = [
             pm.curve(
                 n=name, d=3, periodic=0,
@@ -555,9 +682,16 @@ class ControlShapes:
         ]
 
         self.shape = shapes[0]
+
+        if self.sel:
+            self._replace()
+            self.sel = None
         return self.shape
 
     def four_arrow_thin(self, name="four_arrow_thin"):
+        if pm.ls(sl=1):
+            self.sel = pm.ls(sl=1)[0]
+
         shapes = [
             pm.curve(
                 n=name, d=1, periodic=0,
@@ -581,9 +715,16 @@ class ControlShapes:
         ]
 
         self.shape = shapes[0]
+
+        if self.sel:
+            self._replace()
+            self.sel = None
         return self.shape
 
     def gear(self, name="gear"):
+        if pm.ls(sl=1):
+            self.sel = pm.ls(sl=1)[0]
+
         shapes = [
             pm.curve(
                 n=name, d=3, periodic=0,
@@ -658,9 +799,16 @@ class ControlShapes:
                 pm.delete(shp)
 
         self.shape = shapes[0]
+
+        if self.sel:
+            self._replace()
+            self.sel = None
         return self.shape
 
     def line(self, name="line"):
+        if pm.ls(sl=1):
+            self.sel = pm.ls(sl=1)[0]
+
         shapes = [
             pm.curve(
                 n=name, d=1, periodic=0,
@@ -670,9 +818,16 @@ class ControlShapes:
         ]
 
         self.shape = shapes[0]
+
+        if self.sel:
+            self._replace()
+            self.sel = None
         return self.shape
 
     def locator(self, name="locator"):
+        if pm.ls(sl=1):
+            self.sel = pm.ls(sl=1)[0]
+
         shapes = [
             pm.curve(
                 n=name, d=1, periodic=0,
@@ -684,9 +839,16 @@ class ControlShapes:
         ]
 
         self.shape = shapes[0]
+
+        if self.sel:
+            self._replace()
+            self.sel = None
         return self.shape
 
     def neck(self, name="neck"):
+        if pm.ls(sl=1):
+            self.sel = pm.ls(sl=1)[0]
+
         shapes = [
             pm.curve(
                 n=name, d=3, periodic=0,
@@ -707,9 +869,16 @@ class ControlShapes:
         ]
 
         self.shape = shapes[0]
+
+        if self.sel:
+            self._replace()
+            self.sel = None
         return self.shape
 
     def needle(self, name="needle"):
+        if pm.ls(sl=1):
+            self.sel = pm.ls(sl=1)[0]
+
         shapes = [
             pm.curve(
                 n=name, d=3, periodic=0,
@@ -725,9 +894,16 @@ class ControlShapes:
         ]
 
         self.shape = shapes[0]
+
+        if self.sel:
+            self._replace()
+            self.sel = None
         return self.shape
 
     def sphere(self, name="sphere"):
+        if pm.ls(sl=1):
+            self.sel = pm.ls(sl=1)[0]
+
         shapes = [
             pm.curve(
                 n=name, d=3, periodic=0,
@@ -783,9 +959,16 @@ class ControlShapes:
         ]
 
         self.shape = shapes[0]
+
+        if self.sel:
+            self._replace()
+            self.sel = None
         return self.shape
 
     def square(self, name="square"):
+        if pm.ls(sl=1):
+            self.sel = pm.ls(sl=1)[0]
+
         shapes = [
             pm.curve(
                 n=name, d=1, periodic=0,
@@ -796,9 +979,16 @@ class ControlShapes:
         ]
 
         self.shape = shapes[0]
+
+        if self.sel:
+            self._replace()
+            self.sel = None
         return self.shape
 
     def teardrop(self, name="teardrop"):
+        if pm.ls(sl=1):
+            self.sel = pm.ls(sl=1)[0]
+
         shapes = [
             pm.curve(
                 n=name, d=3, periodic=0,
@@ -814,9 +1004,16 @@ class ControlShapes:
         ]
 
         self.shape = shapes[0]
+
+        if self.sel:
+            self._replace()
+            self.sel = None
         return self.shape
 
     def three_arrow_circle(self, name="three_arrow_circle"):
+        if pm.ls(sl=1):
+            self.sel = pm.ls(sl=1)[0]
+
         shapes = [
             pm.curve(
                 n=name, d=3, periodic=0,
@@ -871,9 +1068,16 @@ class ControlShapes:
         ]
 
         self.shape = shapes[0]
+
+        if self.sel:
+            self._replace()
+            self.sel = None
         return self.shape
 
     def triangle(self, name="triangle"):
+        if pm.ls(sl=1):
+            self.sel = pm.ls(sl=1)[0]
+
         shapes = [
             pm.curve(
                 n=name, d=1, periodic=0,
@@ -884,28 +1088,16 @@ class ControlShapes:
         ]
 
         self.shape = shapes[0]
-        return self.shape
 
-    def two_arrow(self, name="two_arrow"):
-        shapes = [
-            pm.curve(
-                n=name, d=1, periodic=0,
-                knot=[0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0,
-                      11.0, 12.0],
-                point=[[-0.252, 0.0, 0.0], [-0.252, 0.0, 0.503],
-                       [-0.503, 0.0, 0.503], [0.0, 0.0, 1.007],
-                       [0.503, 0.0, 0.503], [0.252, 0.0, 0.503],
-                       [0.252, 0.0, 0.0], [0.252, 0.0, -0.503],
-                       [0.503, 0.0, -0.503], [0.0, 0.0, -1.007],
-                       [-0.503, 0.0, -0.503], [-0.252, 0.0, -0.503],
-                       [-0.252, 0.0, 0.0]]
-            ),
-        ]
-
-        self.shape = shapes[0]
+        if self.sel:
+            self._replace()
+            self.sel = None
         return self.shape
 
     def two_arrow_bend(self, name="two_arrow_bend"):
+        if pm.ls(sl=1):
+            self.sel = pm.ls(sl=1)[0]
+
         shapes = [
             pm.curve(
                 n=name, d=3, periodic=0,
@@ -935,9 +1127,16 @@ class ControlShapes:
         ]
 
         self.shape = shapes[0]
+
+        if self.sel:
+            self._replace()
+            self.sel = None
         return self.shape
 
     def two_arrow_circle(self, name="two_arrow_circle"):
+        if pm.ls(sl=1):
+            self.sel = pm.ls(sl=1)[0]
+
         shapes = [
             pm.curve(
                 n=name, d=3, periodic=0,
@@ -984,4 +1183,8 @@ class ControlShapes:
         ]
 
         self.shape = shapes[0]
+
+        if self.sel:
+            self._replace()
+            self.sel = None
         return self.shape
