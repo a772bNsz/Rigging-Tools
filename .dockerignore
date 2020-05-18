@@ -5,3 +5,4 @@ Dockerfile-2018
 entrypoint.sh
 .github/
 action.yml
+.gitignore
