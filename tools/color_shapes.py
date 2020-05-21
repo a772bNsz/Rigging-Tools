@@ -3,13 +3,6 @@ import webcolors
 import json
 
 
-# webcolors.name_to_rgb('white')
-# rgb_to_name((255, 255, 255))
-# pm.colorIndex( 1, q=True )  # 32 returns rgb
-# rgb defined color (red)
-# cmds.color( 'sphere1', rgb=(1, 0, 0) )
-
-
 class ColorShapes:
     def __init__(self):
         self.sel = pm.ls(sl=1)
