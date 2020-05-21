@@ -4,6 +4,7 @@ test for coloring shapes
 
 import unittest
 import pymel.core as pm
+from pymel.util.path import path
 from tools.color_shapes import ColorShapes
 from tools.control_shapes import ControlShapes
 import json
@@ -15,12 +16,16 @@ class ColorShapesTest(unittest.TestCase):
         print ">>>>> SETUP"
         pm.newFile(f=1)
         cls.shapes = ControlShapes()
-
         cls.cs = ColorShapes()
-        cls.cs.json_file = __file__.split(".")[0] + ".json"
+
+        # ~/Rigging-Tools/results/color_shapes.json
+        f = path(__file__).name.split(".")[0] + ".json"
+        d = path(__file__).dirname().replace("tests", "results")
+        cls.json_file = path(d + "/" + f)
         with open(cls.cs.json_file, "w") as f:
             dictionary = {"yellow": [255, 255, 0]}
             json.dump(dictionary, f, indent=4)
+
         cls.cs.get = cls.cs._get()
 
     def setUp(self):
@@ -55,7 +60,8 @@ class ColorShapesTest(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        pm.saveAs("result.ma", type="mayaAscii")
+        f = path(__file__).name.split(".")[0] + ".ma"
+        pm.saveAs(f, type="mayaAscii")
         print ">>>>> TEARDOWN"
 
 

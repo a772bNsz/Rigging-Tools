@@ -1,4 +1,5 @@
 import pymel.core as pm
+from pymel.util.path import path
 import webcolors
 import json
 
