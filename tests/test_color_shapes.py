@@ -5,42 +5,53 @@ test for coloring shapes
 import unittest
 import pymel.core as pm
 from tools.color_shapes import ColorShapes
+from tools.control_shapes import ControlShapes
+import json
 
 
 class ColorShapesTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         print ">>>>> SETUP"
-        cls.cs = ColorShapes()
         pm.newFile(f=1)
+        cls.shapes = ControlShapes()
+
+        cls.cs = ColorShapes()
+        cls.cs.json_file = __file__.split(".")[0] + ".json"
+        with open(cls.cs.json_file, "w") as f:
+            dictionary = {"yellow": [255, 255, 0]}
+            json.dump(dictionary, f, indent=4)
+        cls.cs.get = cls.cs._get()
+
+    def setUp(self):
+        self.cs.sel = [self.shapes.gear()]
 
     def tearDown(self):
         pm.select(cl=1)
 
-    def test_color_by_name(self):
-        self.assertTrue(self.cs.name("red"),
-                        "shape did not change red")
-        return
+    def test_assign(self):
+        self.cs._assign("ik", rgb=self.cs.get["yellow"])
+        self.assertEqual(self.cs.get["ik"], self.cs.get["yellow"],
+                         "did not assign")
 
-    def test_color_by_type(self):
-        self.assertTrue(self.cs.type("fk"),
-                        "shape did not change fk blue")
+    def test_set_by_name(self):
+        with self.assertRaises(ValueError):
+            self.cs.set("fk")
 
-    def test_color_by_rgb(self):
-        self.assertTrue(self.cs.rgb([134, 23, 90]),
-                        "shape did not turn rgb = [134, 23, 90]")
+    def test_set_by_rgb(self):
+        self.cs.sel[0].rename("fuchsia")
+        self.assertTrue(self.cs.set([255, 0, 255]), "did not set by rgb")
 
-    def test_assign_by_name(self):
-        self.assertTrue(self.cs.name("hashdash", rgb=[134, 173, 255], add=1),
-                        "did not add hashdash")
+    def test_set_update_by_name(self):
+        self.cs.sel[0].rename("aqua")
+        self.cs.set("aqua", rgb=[0, 255, 255], add=1)
+        self.assertTrue(self.cs.set("fk", name="aqua", add=1),
+                        "did not assign by name")
 
-    def test_assign_by_type(self):
-        self.assertFalse(self.cs.type("ik", name="hashdash", add=1),
-                         "hashdash assigned to ik")
-
-    def test_assign_by_type_name(self):
-        self.assertTrue(self.cs.type("ik", name="peachpuff", add=1),
-                        "did not assign yellow to ik")
+    def test_set_update_by_rgb(self):
+        self.cs.sel[0].rename("yellow")
+        self.assertTrue(self.cs.set("left", rgb=[255, 255, 0], add=1),
+                        "did not assign by rgb")
 
     @classmethod
     def tearDownClass(cls):

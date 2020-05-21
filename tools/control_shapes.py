@@ -824,28 +824,7 @@ class ControlShapes:
             self.sel = None
         return self.shape
 
-    def locator(self, name="locator"):
-        if pm.ls(sl=1):
-            self.sel = pm.ls(sl=1)[0]
-
-        shapes = [
-            pm.curve(
-                n=name, d=1, periodic=0,
-                knot=[0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0],
-                point=[[0.0, 1.0, 0.0], [0.0, -1.0, 0.0], [0.0, 0.0, 0.0],
-                       [0.0, 0.0, -1.0], [0.0, 0.0, 1.0], [0.0, 0.0, 0.0],
-                       [1.0, 0.0, 0.0], [-1.0, 0.0, 0.0]]
-            ),
-        ]
-
-        self.shape = shapes[0]
-
-        if self.sel:
-            self._replace()
-            self.sel = None
-        return self.shape
-
-    def neck(self, name="neck"):
+    def eight_star(self, name="eight_star"):
         if pm.ls(sl=1):
             self.sel = pm.ls(sl=1)[0]
 
