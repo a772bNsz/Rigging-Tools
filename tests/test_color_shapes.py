@@ -19,9 +19,9 @@ class ColorShapesTest(unittest.TestCase):
         cls.cs = ColorShapes()
 
         # ~/Rigging-Tools/results/color_shapes.json
-        f = path(__file__).name.split(".")[0] + ".json"
+        f = path(__file__).basename().split(".")[0] + ".json"
         d = path(__file__).dirname().replace("tests", "results")
-        cls.json_file = path(d + "/" + f)
+        cls.cs.json_file = path(d + "/" + f)
         with open(cls.cs.json_file, "w") as f:
             dictionary = {"yellow": [255, 255, 0]}
             json.dump(dictionary, f, indent=4)
