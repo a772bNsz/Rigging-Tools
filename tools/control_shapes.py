@@ -76,6 +76,29 @@ class ControlShapes:
         self.data = self.json_file = None
         return
 
+    def _load(self, json_file=None, control=None):
+        with open(json_file) as f:
+            data = json.load(f)
+
+        sel = self.sel = pm.ls(sl=1)[0]
+        getattr(self, data[control]["shape"])()
+
+        trg = data[control]["size"]
+        rep = map(lambda s: s[1] - s[0], zip(*sel.getBoundingBox()))
+
+        xyz = []
+        if not all(map(lambda x, y: x == y, trg, rep)):
+            for t, r in zip(trg, rep):
+                try:
+                    xyz += [round(t / r, 2)]
+                except ZeroDivisionError:
+                    xyz += [round(t, 2)]
+
+        sel.s.set(xyz)
+        pm.makeIdentity(self.shape, scale=1, apply=1)
+        pm.select(sel)
+        return True
+
     def _save(self, name):
         top_node = self.sel
 

@@ -29,7 +29,7 @@ class ControlShapesTest(unittest.TestCase):
 
     def test_cube_to_locator(self):
         sel = pm.spaceLocator()  # active selection
-        sel.t.set([10]*3)
+        sel.t.set([10] * 3)
         self.cs.circle_nose()
         pos = self.cs.shape.getTranslation(space="world")
         self.assertTrue(all(map(lambda x: x == 10, pos)),
@@ -40,7 +40,7 @@ class ControlShapesTest(unittest.TestCase):
                         "did not make combination shape")
 
     def test_save(self):
-        pm.polyCylinder()[0].s.set([5]*3)
+        pm.polyCylinder()[0].s.set([5] * 3)
         pm.duplicate(n="test_save")
         self.assertTrue(self.cs.teardrop(save=1),
                         "did not save")
@@ -55,13 +55,25 @@ class ControlShapesTest(unittest.TestCase):
         data1 = self.cs.data
 
         sel = pm.polyCylinder()[0]
-        sel.s.set([5]*3)
+        sel.s.set([5] * 3)
         pm.parent(sel, top_node)
         self.cs.teardrop(save=1)
         data2 = self.cs.data
 
         self.assertGreater(len(data2), len(data1),
                            "json did not save correctly")
+
+    def test_load(self):
+        pm.polyPlane(n="test_load")[0].s.set([5] * 3)
+        self.cs.triangle(save=1)
+        pm.delete("test_load")
+
+        json_file = self.cs.json_file
+        cs = ControlShapes()
+        pm.polyPlane(n="test_load")
+
+        self.assertTrue(cs._load(json_file=json_file, control="test_load"),
+                        "did not load 'test_load'")
 
     @classmethod
     def tearDownClass(cls):
