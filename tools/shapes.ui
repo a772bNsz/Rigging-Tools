@@ -20,6 +20,9 @@
    <string>Color and Shapes</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
+   <property name="spacing">
+    <number>5</number>
+   </property>
    <property name="leftMargin">
     <number>12</number>
    </property>
@@ -29,7 +32,7 @@
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout">
      <property name="spacing">
-      <number>0</number>
+      <number>5</number>
      </property>
      <item>
       <widget class="QPushButton" name="ik_btn">
@@ -53,10 +56,16 @@
        </property>
        <property name="font">
         <font>
-         <pointsize>18</pointsize>
+         <pointsize>32</pointsize>
          <weight>75</weight>
          <bold>true</bold>
         </font>
+       </property>
+       <property name="autoFillBackground">
+        <bool>false</bool>
+       </property>
+       <property name="styleSheet">
+        <string notr="true"/>
        </property>
        <property name="text">
         <string>IK</string>
@@ -88,13 +97,22 @@
        </property>
        <property name="font">
         <font>
-         <pointsize>18</pointsize>
+         <pointsize>32</pointsize>
          <weight>75</weight>
          <bold>true</bold>
         </font>
        </property>
+       <property name="styleSheet">
+        <string notr="true"/>
+       </property>
        <property name="text">
         <string>FK</string>
+       </property>
+       <property name="autoDefault">
+        <bool>false</bool>
+       </property>
+       <property name="default">
+        <bool>false</bool>
        </property>
        <property name="flat">
         <bool>false</bool>
@@ -106,10 +124,13 @@
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout_2">
      <property name="spacing">
+      <number>5</number>
+     </property>
+     <property name="bottomMargin">
       <number>0</number>
      </property>
      <item>
-      <widget class="QPushButton" name="l_btn">
+      <widget class="QPushButton" name="left_btn">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
          <horstretch>0</horstretch>
@@ -130,7 +151,7 @@
        </property>
        <property name="font">
         <font>
-         <pointsize>18</pointsize>
+         <pointsize>32</pointsize>
          <weight>75</weight>
          <bold>true</bold>
         </font>
@@ -144,7 +165,7 @@
       </widget>
      </item>
      <item>
-      <widget class="QPushButton" name="m_btn">
+      <widget class="QPushButton" name="middle_btn">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
          <horstretch>0</horstretch>
@@ -165,7 +186,7 @@
        </property>
        <property name="font">
         <font>
-         <pointsize>18</pointsize>
+         <pointsize>32</pointsize>
          <weight>75</weight>
          <bold>true</bold>
         </font>
@@ -179,7 +200,7 @@
       </widget>
      </item>
      <item>
-      <widget class="QPushButton" name="r_btn">
+      <widget class="QPushButton" name="right_btn">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
          <horstretch>0</horstretch>
@@ -200,7 +221,7 @@
        </property>
        <property name="font">
         <font>
-         <pointsize>18</pointsize>
+         <pointsize>32</pointsize>
          <weight>75</weight>
          <bold>true</bold>
         </font>
@@ -217,6 +238,9 @@
    </item>
    <item>
     <layout class="QGridLayout" name="color_grd">
+     <property name="topMargin">
+      <number>10</number>
+     </property>
      <property name="spacing">
       <number>0</number>
      </property>
