@@ -43,7 +43,7 @@ class ColorShapes:
         for s in self.sel:
             s.overrideEnabled.set(1)
             s.overrideRGBColors.set(1)
-            s.overrideColorRGB.set(*self.rgb)
+            s.overrideColorRGB.set(self.rgb)
 
         self.rgb = None
         return True
