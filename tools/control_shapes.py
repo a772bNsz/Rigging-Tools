@@ -930,7 +930,7 @@ class ControlShapes:
         """
         print """
     def {0}(self, save=0):
-        return self._set("{0}", save=save)""".format(sel)
+        return self._set("{0}")""".format(sel)
 
         return
 
@@ -956,46 +956,6 @@ class ControlShapes:
         pm.makeIdentity(sel, scale=1, apply=1)
         pm.select(sel)
         return True
-
-    def _save(self, name, sel):
-        top_node = sel
-
-        top_nodes = pm.ls(assemblies=1)
-        while top_node not in top_nodes:
-            top_node = top_node.getParent()
-
-        top_node = str(top_node)
-        control = str(sel)
-        size = map(lambda s: round(s[1] - s[0], 2),
-                   zip(*sel.getBoundingBox()))
-
-        # ~/Rigging-Tools/results/top_node.json
-        f = top_node + ".json"
-        d = path(__file__).dirname().replace("tools", "results")
-        self.json_file = json_file = path(d + "/" + f)
-
-        if json_file.exists():
-            with open(json_file) as f:
-                self.data = json.load(f)
-
-            self.data.update({control: {
-                "size": size,
-                "shape": name,
-                "rgb": None
-            }})
-
-            with open(json_file, "w") as f:
-                json.dump(self.data, f, indent=4)
-        else:
-            self.data = {control: {
-                "size": size,
-                "shape": name,
-                "rgb": None
-            }}
-
-            with open(json_file, "w") as f:
-                json.dump(self.data, f, indent=4)
-        return
 
     @staticmethod
     def _replace(sel, shape):
@@ -1026,14 +986,12 @@ class ControlShapes:
             sel.s.set(sel_scale)
         return sel
 
-    def _set(self, name, save=0):
+    def _set(self, name):
         selected = pm.ls(sl=1)
         shape = globals()[name]()
 
         if selected:
             selected = self._replace(selected[0], shape)
-            if save:
-                self._save(name, selected)
         else:
             selected = shape
 
@@ -1049,92 +1007,92 @@ class ControlShapes:
         pm.select(selected)
         return selected
 
-    def arrow_circle(self, save=0):
-        return self._set("arrow_circle", save=save)
+    def arrow_circle(self):
+        return self._set("arrow_circle")
 
-    def arrow_large(self, save=0):
-        return self._set("arrow_large", save=save)
+    def arrow_large(self):
+        return self._set("arrow_large")
 
-    def arrow_medium(self, save=0):
-        return self._set("arrow_medium", save=save)
+    def arrow_medium(self):
+        return self._set("arrow_medium")
 
-    def arrow_small(self, save=0):
-        return self._set("arrow_small", save=save)
+    def arrow_small(self):
+        return self._set("arrow_small")
 
-    def arrow(self, save=0):
-        return self._set("arrow", save=save)
+    def arrow(self):
+        return self._set("arrow")
 
-    def axis_bold(self, save=0):
-        return self._set("axis_bold", save=save)
+    def axis_bold(self):
+        return self._set("axis_bold")
 
-    def axis(self, save=0):
-        return self._set("axis", save=save)
+    def axis(self):
+        return self._set("axis")
 
-    def circle_arrow_up(self, save=0):
-        return self._set("circle_arrow_up", save=save)
+    def circle_arrow_up(self):
+        return self._set("circle_arrow_up")
 
-    def circle_nose(self, save=0):
-        return self._set("circle_nose", save=save)
+    def circle_nose(self):
+        return self._set("circle_nose")
 
-    def circle_spikes_long(self, save=0):
-        return self._set("circle_spikes_long", save=save)
+    def circle_spikes_long(self):
+        return self._set("circle_spikes_long")
 
-    def circle_spikes(self, save=0):
-        return self._set("circle_spikes", save=save)
+    def circle_spikes(self):
+        return self._set("circle_spikes")
 
-    def cone(self, save=0):
-        return self._set("cone", save=save)
+    def cone(self):
+        return self._set("cone")
 
-    def cross(self, save=0):
-        return self._set("cross", save=save)
+    def cross(self):
+        return self._set("cross")
 
-    def cube_sphere(self, save=0):
-        return self._set("cube_sphere", save=save)
+    def cube_sphere(self):
+        return self._set("cube_sphere")
 
-    def cube(self, save=0):
-        return self._set("cube", save=save)
+    def cube(self):
+        return self._set("cube")
 
-    def eight_star(self, save=0):
-        return self._set("eight_star", save=save)
+    def eight_star(self):
+        return self._set("eight_star")
 
-    def four_arrow_circle(self, save=0):
-        return self._set("four_arrow_circle", save=save)
+    def four_arrow_circle(self):
+        return self._set("four_arrow_circle")
 
-    def four_arrow_thin(self, save=0):
-        return self._set("four_arrow_thin", save=save)
+    def four_arrow_thin(self):
+        return self._set("four_arrow_thin")
 
-    def four_arrow(self, save=0):
-        return self._set("four_arrow", save=save)
+    def four_arrow(self):
+        return self._set("four_arrow")
 
-    def gear(self, save=0):
-        return self._set("gear", save=save)
+    def gear(self):
+        return self._set("gear")
 
-    def line(self, save=0):
-        return self._set("line", save=save)
+    def line(self):
+        return self._set("line")
 
-    def needle(self, save=0):
-        return self._set("needle", save=save)
+    def needle(self):
+        return self._set("needle")
 
-    def sphere(self, save=0):
-        return self._set("sphere", save=save)
+    def sphere(self):
+        return self._set("sphere")
 
-    def square(self, save=0):
-        return self._set("square", save=save)
+    def square(self):
+        return self._set("square")
 
-    def teardrop(self, save=0):
-        return self._set("teardrop", save=save)
+    def teardrop(self):
+        return self._set("teardrop")
 
-    def three_arrow_circle(self, save=0):
-        return self._set("three_arrow_circle", save=save)
+    def three_arrow_circle(self):
+        return self._set("three_arrow_circle")
 
-    def triangle(self, save=0):
-        return self._set("triangle", save=save)
+    def triangle(self):
+        return self._set("triangle")
 
-    def two_arrow_bend(self, save=0):
-        return self._set("two_arrow_bend", save=save)
+    def two_arrow_bend(self):
+        return self._set("two_arrow_bend")
 
-    def two_arrow_circle(self, save=0):
-        return self._set("two_arrow_circle", save=save)
+    def two_arrow_circle(self):
+        return self._set("two_arrow_circle")
 
-    def two_arrow(self, save=0):
-        return self._set("two_arrow", save=save)
+    def two_arrow(self):
+        return self._set("two_arrow")
