@@ -30,8 +30,7 @@ class ControlShapesTest(unittest.TestCase):
     def test_cube_to_locator(self):
         sel = pm.spaceLocator()  # active selection
         sel.t.set([10] * 3)
-        self.cs.circle_nose()
-        pos = self.cs.shape.getTranslation(space="world")
+        pos = self.cs.circle_nose().getTranslation(space="world")
         self.assertTrue(all(map(lambda x: x == 10, pos)),
                         "shape position is not correct in world space")
 
@@ -62,6 +61,22 @@ class ControlShapesTest(unittest.TestCase):
 
         self.assertGreater(len(data2), len(data1),
                            "json did not save correctly")
+
+    def test_save_all(self):
+        shapes = [self.cs.axis_bold()]
+        shapes += [self.cs.four_arrow_thin()]
+        shapes += [self.cs.gear()]
+
+        pm.group(shapes, n="test_save_all")
+        e = 0
+        for i in shapes:
+            i.rename("CON_"+str(e))
+            self.cs._save(i.shape.get(), i)
+            i.tx.set(e*5)
+            e += 1
+
+        self.assertTrue(path(self.cs.json_file).exists(),
+                        "json file was not created")
 
     def test_load(self):
         pm.polyPlane(n="test_load")[0].s.set([5] * 3)

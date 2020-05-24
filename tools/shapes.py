@@ -1,13 +1,9 @@
 from PySide2 import QtCore, QtGui, QtWidgets
 from PySide2.QtUiTools import QUiLoader
 from pymel.util.path import path
-
-# from tools.color_shapes import ColorShapes
-# from tools.control_shapes import ControlShapes
 import pymel.core as pm
 
-from tools import color_shapes
-from tools import control_shapes
+from tools import color_shapes, control_shapes
 reload(color_shapes)
 reload(control_shapes)
 
