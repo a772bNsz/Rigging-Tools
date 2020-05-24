@@ -1,2 +1,3 @@
 /sandbox/
-/tests/ma/
+/tests/ma/*.ma
+/tests/*.json
