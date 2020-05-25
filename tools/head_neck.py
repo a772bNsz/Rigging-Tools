@@ -58,11 +58,6 @@ class Rig:
         pm.parent("head_neck_GRP", "root_transform_CON")
         pm.parent("root_transform_CON", w=1)
 
-        neck_loc = pm.spaceLocator(n="neckChest_const_LOC")
-        pm.matchTransform(neck_loc, "chest_CON")
-        pm.parentConstraint(neck_loc, "head_neck_GRP", mo=1)
-        pm.parent(neck_loc, "chest_CON")
-        neck_loc.hide()
         pm.select(cl=1)
         return controls
 
@@ -155,6 +150,16 @@ class Rig:
         pm.parent(children, "head_neck_GRP|dontTouch_GRP")
         pm.setAttr("head_neck_GRP|dontTouch_GRP.visibility", 0)
         pm.select(cl=1)
+        return True
+
+    @staticmethod
+    def connect(control):
+        const_loc = pm.spaceLocator(n="neck{}_const_LOC".format(
+            control.split("_", 1)[0].capitalize()))
+        pm.matchTransform(const_loc, "neck_OFS")
+        pm.parentConstraint(const_loc, "neck_OFS")
+        pm.parent(const_loc, control)
+        const_loc.hide()
         return True
 
     def clean_up(self):

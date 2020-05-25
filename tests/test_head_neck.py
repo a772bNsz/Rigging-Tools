@@ -53,6 +53,14 @@ class HeadNeckTest(unittest.TestCase):
         self.assertTrue(self.neck.guts(),
                         "did not set up guts")
 
+    def test_connect(self):
+        self.neck.ik_spline()
+        self.neck.setup_controls()
+        self.neck.guts()
+        self.assertTrue(self.neck.connect("chest_CON"),
+                        "did not connect neck to chest")
+
+    @unittest.skip("")
     def test_clean_up(self):
         self.neck.ik_spline()
         self.neck.setup_controls()
