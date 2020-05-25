@@ -18,14 +18,16 @@ from collections import OrderedDict
 class Rig:
     def __init__(self):
         self.controls = self.skin_joints = []
+        self.root_joint = self.end_joint = None
 
     def ik_spline(self):
-        pm.joint("spine1_result_JNT", e=1, oj="xzy", sao="xup", ch=1, zso=1)
+        self.end_joint = self.root_joint.getChildren(ad=1)[0]
+        pm.joint(self.root_joint, e=1, oj="xzy", sao="xup", ch=1, zso=1)
         pm.setAttr("spine7_result_JNT.jointOrient", [0, 0, 0])
 
         hdl, eff, crv = pm.ikHandle(n="spine_HDL",
-                                    sj="spine1_result_JNT",
-                                    ee="spine7_result_JNT",
+                                    sj=self.root_joint,
+                                    ee=self.end_joint,
                                     sol="ikSplineSolver")
         eff.rename("spine_EFF")
         crv.rename("spine_CRV")
@@ -46,12 +48,12 @@ class Rig:
             "rotateOrder": 2,  # zxy
         }
         controls["body_CON"] = {
-            "snapTo": "spine1_result_JNT",
+            "snapTo": self.root_joint,
             "rotateOrder": 2,  # zxy
             "parent": "root_transform_CON"
         }
         controls["hip_CON"] = {
-            "snapTo": "spine1_result_JNT",
+            "snapTo": self.root_joint,
             "rotateOrder": 2,  # zxy
             "parent": "torso_GRP"
         }
@@ -65,8 +67,8 @@ class Rig:
             "rotateOrder": 1,  # yzx
             "parent": "spine1_FK_CON"
         }
-        controls["shoulder_CON"] = {
-            "snapTo": "spine7_result_JNT",
+        controls["chest_CON"] = {
+            "snapTo": self.end_joint,
             "rotateOrder": 2,  # zxy
             "parent": "spine2_FK_CON"
         }
@@ -100,28 +102,28 @@ class Rig:
 
     def _advanced_twist(self):
         # bind joints
-        hip_bind, shoulder_bind = bind_joints = pm.duplicate(
-            "spine1_result_JNT",
-            "spine7_result_JNT",
+        hip_bind, chest_bind = bind_joints = pm.duplicate(
+            self.root_joint,
+            self.end_joint,
             po=1)
 
         hip_bind.rename("hip_bind_JNT")
-        shoulder_bind.rename("shoulder_bind_JNT")
+        chest_bind.rename("chest_bind_JNT")
 
         map(lambda x: x.rotate.set(0, 0, 0), bind_joints)
 
         hip_bind.rotateOrder.set(
             self.controls["hip_CON"]["rotateOrder"])
-        shoulder_bind.rotateOrder.set(
-            self.controls["shoulder_CON"]["rotateOrder"])
+        chest_bind.rotateOrder.set(
+            self.controls["chest_CON"]["rotateOrder"])
 
-        pm.parent(shoulder_bind, w=1)
+        pm.parent(chest_bind, w=1)
 
         pm.skinCluster(bind_joints, "spine_CRV",
                        tsb=1, mi=2, n="spine_bind_SCL")
 
         pm.parentConstraint("hip_CON", hip_bind, mo=1)
-        pm.parentConstraint("shoulder_CON", shoulder_bind, mo=1)
+        pm.parentConstraint("chest_CON", chest_bind, mo=1)
 
         # advanced spline twist settings
         spine_hdl = pm.PyNode("spine_HDL")
@@ -132,7 +134,7 @@ class Rig:
         spine_hdl.dWorldUpVectorEndY.set(-1)
 
         hip_bind.worldMatrix[0] >> spine_hdl.dWorldUpMatrix
-        shoulder_bind.worldMatrix[0] >> spine_hdl.dWorldUpMatrixEnd
+        chest_bind.worldMatrix[0] >> spine_hdl.dWorldUpMatrixEnd
 
         pm.select(cl=1)
         return bind_joints
@@ -165,7 +167,7 @@ class Rig:
         math_nodes[2].outFloat >> math_nodes[3].floatB
 
         # drive result joints
-        result_chain = pm.PyNode("spine1_result_JNT")
+        result_chain = pm.PyNode(self.root_joint)
         result_chain = [result_chain] + result_chain.getChildren(ad=1)
         for jnt in result_chain:
             math_nodes[1].outFloat >> jnt.sx
@@ -186,8 +188,8 @@ class Rig:
             "spine_HDL",
             "spine_CRV",
             "hip_bind_JNT",
-            "shoulder_bind_JNT",
-            "spine1_result_JNT"
+            "chest_bind_JNT",
+            self.root_joint
         ]
 
         pm.parent(children, "dontTouch_GRP")
@@ -211,8 +213,8 @@ class Rig:
         pm.setAttr("torso_GRP.v", lock=0, keyable=0)
         pm.setAttr("dontTouch_GRP.v", lock=0, keyable=0)
 
-        # lock and hide scale - body, hip, shoulder
-        items = [i+"_CON" for i in ["body", "hip", "shoulder"]]
+        # lock and hide scale - body, hip, chest
+        items = [i+"_CON" for i in ["body", "hip", "chest"]]
         for i in items:
             i = pm.PyNode(i)
             for ax in "xyz":
