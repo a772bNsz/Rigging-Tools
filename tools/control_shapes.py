@@ -964,15 +964,16 @@ class ControlShapes:
             sel_scale = sel.s.get()
             sel.s.set([1] * 3)
 
-        trg = map(lambda s: s[1] - s[0], zip(*sel.getBoundingBox()))
         rep = map(lambda s: s[1] - s[0], zip(*shape.getBoundingBox()))
-
-        xyz = []
-        for t, r in zip(trg, rep):
-            try:
-                xyz += [round(t / r, 2)]
-            except ZeroDivisionError:
-                xyz += [round(t, 2)]
+        # trg = map(lambda s: s[1] - s[0], zip(*sel.getBoundingBox()))
+        #
+        # xyz = []
+        # for t, r in zip(trg, rep):
+        #     try:
+        #         xyz += [round(t / r, 2)]
+        #     except ZeroDivisionError:
+        #         xyz += [round(t, 2)]
+        xyz = rep
 
         shape.scale.set(xyz)
         pm.makeIdentity(shape, scale=1, apply=1)
