@@ -91,13 +91,6 @@ class Rig:
         pm.parent("torso_GRP", "root_transform_CON")
         pm.parent("root_transform_CON", w=1)
         pm.delete("root_transform_OFS")
-
-        torso_loc = pm.spaceLocator(n="hipBody_const_LOC")
-        pm.matchTransform(torso_loc, "hip_CON")
-        pm.parentConstraint(torso_loc, "torso_GRP", mo=1)
-        pm.parent(torso_loc, "body_CON")
-        torso_loc.hide()
-        pm.select(cl=1)
         return controls
 
     def _advanced_twist(self):
@@ -197,6 +190,17 @@ class Rig:
         pm.select(cl=1)
         return
 
+    @staticmethod
+    def connect(control):
+        const_loc = pm.spaceLocator(n="hip{}_const_LOC".format(
+            control.split("_", 1)[0].capitalize()))
+        pm.matchTransform(const_loc, "hip_CON")
+        constraint_node = pm.parentConstraint(const_loc, "torso_GRP", mo=1)
+        pm.parent(const_loc, control)
+        const_loc.hide()
+        pm.select(cl=1)
+        return const_loc, constraint_node
+    
     def clean_up(self):
         controls = self.controls
         del controls["root_transform_CON"]

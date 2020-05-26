@@ -47,10 +47,20 @@ class TestSpine(unittest.TestCase):
         self.assertIsNone(self.spine._squash_stretch(),
                           "math nodes for squash and stretch erred")
 
+    @unittest.skip("")
+    def test_connect(self):
+        self.spine.ik_spline()
+        self.spine.setup_controls()
+        self.spine._advanced_twist()
+        self.spine._squash_stretch()
+        self.assertTrue(self.spine.connect("body_CON"),
+                        "did not connect spine")
+
     def test_clean_up(self):
         self.spine.ik_spline()
         self.spine.setup_controls()
         self.spine.guts()
+        self.spine.connect("body_CON")
         self.assertIsNone(self.spine.clean_up(), "clean up failed")
 
     @classmethod
