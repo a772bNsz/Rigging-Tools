@@ -190,14 +190,16 @@ class Rig:
         pm.select(cl=1)
         return
 
-    def connect(self, control):
-        const_loc = pm.spaceLocator(n="hipBody_const_LOC")
+    @staticmethod
+    def connect(control):
+        const_loc = pm.spaceLocator(n="hip{}_const_LOC".format(
+            control.split("_", 1)[0].capitalize()))
         pm.matchTransform(const_loc, "hip_CON")
-        pm.parentConstraint(const_loc, "const_GRP", mo=1)
-        pm.parent(const_loc, "body_CON")
+        constraint_node = pm.parentConstraint(const_loc, "torso_GRP", mo=1)
+        pm.parent(const_loc, control)
         const_loc.hide()
         pm.select(cl=1)
-        return True
+        return const_loc, constraint_node
     
     def clean_up(self):
         controls = self.controls
