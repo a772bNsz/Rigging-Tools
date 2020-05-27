@@ -12,6 +12,14 @@ class HeadNeckTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         pm.newFile()
+
+        # cls.neck = Rig()
+        # cls.neck.root_joint = \
+        #     pm.joint(n="neck_base_result_JNT", p=[-1.89, 145.63, 1.51])
+        # pm.joint(n="neck_mid1_result_JNT", p=[1.71, 150.31, 3.29])
+        # pm.joint(n="neck_mid2_result_JNT", p=[3.55, 154.27, 4.87])
+        # pm.joint(n="neck_end_result_JNT", p=[1.86, 158.52, 6.58])
+
         d = path(__file__).dirname().replace("tests", "results")
         ma = path(d + "/head_neck_start.ma")
         pm.importFile(ma, type="mayaAscii", ignoreVersion=1, renameAll=1,
@@ -53,12 +61,23 @@ class HeadNeckTest(unittest.TestCase):
         self.assertTrue(self.neck.guts(),
                         "did not set up guts")
 
+    @unittest.skip("")
     def test_connect(self):
         self.neck.ik_spline()
         self.neck.setup_controls()
         self.neck.guts()
         self.assertTrue(self.neck.connect("chest_CON"),
                         "did not connect neck to chest")
+
+    def test_space_switch(self):
+        self.neck.ik_spline()
+        self.neck.setup_controls()
+        self.neck.guts()
+        self.neck.connect("chest_CON")
+
+        controls = ["neck_CON", "chest_CON", "body_CON", "root_transform_CON"]
+        self.assertTrue(self.neck.space_switch(controls),
+                        "did not apply space switch to head")
 
     @unittest.skip("")
     def test_clean_up(self):

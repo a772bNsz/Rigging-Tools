@@ -8,7 +8,7 @@ class Rig:
         self.root_joint = self.end_joint = None
 
     def ik_spline(self):
-        self.end_joint = self.root_joint.getChildren(ad=1)[0]
+        self.end_joint = self.root_joint.getChildren(ad=1, type="joint")[0]
         pm.joint(self.root_joint, e=1, oj="xzy", sao="xup", ch=1, zso=1)
         hdl, eff, crv = pm.ikHandle(n="neck_HDL",
                                     sj=self.root_joint,
@@ -157,9 +157,95 @@ class Rig:
         const_loc = pm.spaceLocator(n="neck{}_const_LOC".format(
             control.split("_", 1)[0].capitalize()))
         pm.matchTransform(const_loc, "neck_OFS")
-        pm.parentConstraint(const_loc, "neck_OFS")
+
+        connection_nodes = [
+            const_loc,
+            pm.parentConstraint(const_loc, "neck_OFS"),
+            pm.parentConstraint(const_loc, "neck_base_bind_JNT")]
+
         pm.parent(const_loc, control)
         const_loc.hide()
+        return connection_nodes
+
+    def space_switch(self, controls):
+        # SPACE LOCATORS
+        space_locators = []
+        for con in controls:
+            name = con.split("_")[0].capitalize()
+            space_locators += [
+                pm.spaceLocator(n="head{}_space_LOC".format(name))]
+            pm.matchTransform(space_locators[-1], "head_CON")
+
+        # SPACE ATTRIBUTES
+        pm.addAttr("head_CON", ln="rotationSpace", at="enum", k=1,
+                   en=":".join(map(lambda x: x.split("_")[0], controls)))
+        pm.addAttr("head_CON", ln="translationSpace", at="enum", k=1,
+                   en=":".join(map(lambda x: x.split("_")[0], controls)))
+
+        # ROTATION SPACE SET DRIVEN KEY
+        ori_const = pm.orientConstraint(space_locators, "head_OFS", mo=1)
+        rotation_space_values = [c.split("_")[0] for c in controls]
+
+        for dv in rotation_space_values:
+            # key all weights to 0
+            map(lambda x:
+                pm.setDrivenKeyframe(
+                    ori_const,
+                    at=x,
+                    cd="head_CON.rotationSpace",
+                    dv=rotation_space_values.index(dv),
+                    v=0,
+                    itt="auto",
+                    ott="step"),
+                ori_const.listAttr(st="*_space_*"))
+
+            # key weight matching driven value to 1
+            weight = ori_const.listAttr(
+                st="head{}_space_LOC*".format(dv.capitalize()))[0]
+
+            pm.setDrivenKeyframe(
+                ori_const,
+                at=weight,
+                currentDriver="head_CON.rotationSpace",
+                driverValue=rotation_space_values.index(dv),
+                value=1,
+                itt="auto",
+                ott="step"
+            )
+
+        # TRANSLATION SPACE SET DRIVEN KEY
+        pt_const = pm.pointConstraint(space_locators, "head_OFS", mo=1)
+        translation_space_value = [c.split("_")[0] for c in controls]
+
+        for dv in translation_space_value:
+            # key all weights to 0
+            map(lambda x:
+                pm.setDrivenKeyframe(
+                    pt_const,
+                    at=x,
+                    cd="head_CON.translationSpace",
+                    dv=translation_space_value.index(dv),
+                    v=0,
+                    itt="auto",
+                    ott="step"),
+                pt_const.listAttr(st="*_space_*"))
+
+            # key weight matching driven value to 1
+            weight = pt_const.listAttr(
+                st="head{}_space_LOC*".format(dv.capitalize()))[0]
+
+            pm.setDrivenKeyframe(
+                pt_const,
+                at=weight,
+                currentDriver="head_CON.translationSpace",
+                driverValue=translation_space_value.index(dv),
+                value=1,
+                itt="auto",
+                ott="step"
+            )
+
+            for loc, con in zip(space_locators, controls):
+                pm.parent(loc, con, a=1)
         return True
 
     def clean_up(self):
