@@ -1,4 +1,3 @@
 /sandbox/
-/tests/ma/*.ma
-/tests/*.json
+/tests/ma/
 /tools/shape_thumbnails
