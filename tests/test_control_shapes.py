@@ -6,6 +6,7 @@ import unittest
 import pymel.core as pm
 from pymel.util.path import path
 from tools.control_shapes import ControlShapes
+import json
 
 
 class ControlShapesTest(unittest.TestCase):
@@ -13,82 +14,72 @@ class ControlShapesTest(unittest.TestCase):
     def setUpClass(cls):
         print ">>>>> SETUP"
         cls.cs = ControlShapes()
-        pm.newFile(f=1)
 
-        d = path(__file__).dirname().replace("tests", "results")
-        files = path(d).files("test_*.json")
-        [f.remove_p() for f in files]
+    def setUp(self):
+        pm.newFile(f=1)
 
     def tearDown(self):
         pm.select(cl=1)
 
-    def test_replace(self):
-        pm.polyTorus()[0]
-        self.assertTrue(self.cs.circle_nose(),
-                        "did not replace selection with shape")
-
-    def test_cube_to_locator(self):
-        sel = pm.spaceLocator()  # active selection
-        sel.t.set([10] * 3)
-        pos = self.cs.circle_nose().getTranslation(space="world")
-        self.assertTrue(all(map(lambda x: x == 10, pos)),
-                        "shape position is not correct in world space")
-
-    def test_multi_shape(self):
-        self.assertTrue(self.cs.gear(),
-                        "did not make combination shape")
-
     def test_save(self):
         pm.polyCylinder()[0].s.set([5] * 3)
         pm.duplicate(n="test_save")
-        self.assertTrue(self.cs.teardrop(save=1),
+        f = path(__file__).dirname().replace("tests", "results")
+        json_file = path(f + "/test_save.json")
+        controls = [self.cs.teardrop()]  # active selection on control
+        self.assertTrue(self.cs.save(json_file=json_file, controls=controls),
                         "did not save")
 
     def test_save_overwrite(self):
-        top_node = pm.group(n="test_save_overwrite")
+        f = path(__file__).dirname().replace("tests", "results")
+        json_file = path(f + "/test_save_overwrite.json")
 
-        sel = pm.polyCube()[0]
+        sel = pm.polyCube(n="test_save_overwrite")[0]
         sel.s.set([10, 20, 5])
-        pm.parent(sel, top_node)
-        self.cs.eight_star(save=1)
-        data1 = self.cs.data
+        controls = [self.cs.eight_star()]
+        self.cs.save(json_file=json_file, controls=controls)
 
-        sel = pm.polyCylinder()[0]
         sel.s.set([5] * 3)
-        pm.parent(sel, top_node)
-        self.cs.teardrop(save=1)
-        data2 = self.cs.data
+        controls = [self.cs.teardrop()]
+        self.cs.save(json_file=json_file, controls=controls)
 
-        self.assertGreater(len(data2), len(data1),
-                           "json did not save correctly")
+        with open(json_file) as f:
+            data = json.load(f)
+
+        self.assertEqual(data["test_save_overwrite"]["shape"], "teardrop",
+                         "did not save")
 
     def test_save_all(self):
-        shapes = [self.cs.axis_bold()]
-        shapes += [self.cs.four_arrow_thin()]
-        shapes += [self.cs.gear()]
+        f = path(__file__).dirname().replace("tests", "results")
+        json_file = path(f + "/test_save_all.json")
 
-        pm.group(shapes, n="test_save_all")
-        e = 0
-        for i in shapes:
-            i.rename("CON_"+str(e))
-            self.cs._save(i.shape.get(), i)
-            i.tx.set(e*5)
+        controls = []; e = 1
+        for shp in ["axis_bold", "four_arrow_thin", "gear"]:
+            controls += [getattr(self.cs, shp)().rename("CON_"+str(e))]
+            controls[-1].tx.set(e*5)
+            pm.select(cl=1)
             e += 1
 
-        self.assertTrue(path(self.cs.json_file).exists(),
-                        "json file was not created")
+        self.cs.save(json_file=json_file, controls=controls)
+
+        with open(json_file) as f:
+            data = json.load(f)
+
+        self.assertTrue(len(data) == 3, "json file was not created")
 
     def test_load(self):
-        pm.polyPlane(n="test_load")[0].s.set([5] * 3)
-        self.cs.triangle(save=1)
-        pm.delete("test_load")
+        controls = []; e = 1
+        for shp in ["axis_bold", "four_arrow_thin", "gear"]:
+            controls += [getattr(self.cs, shp)().rename("CON_"+str(e))]
+            controls[-1].tx.set(e*5)
+            pm.select(cl=1)
+            e += 1
 
-        json_file = self.cs.json_file
-        cs = ControlShapes()
-        pm.polyPlane(n="test_load")
+        f = path(__file__).dirname().replace("tests", "results")
+        json_file = path(f + "/test_save_all.json")
 
-        self.assertTrue(cs._load(json_file=json_file, control="test_load"),
-                        "did not load 'test_load'")
+        self.assertTrue(self.cs.load(json_file=json_file),
+                        "did not load shapes from file")
 
     @classmethod
     def tearDownClass(cls):

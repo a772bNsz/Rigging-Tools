@@ -918,7 +918,8 @@ def two_arrow():
 
 class ControlShapes:
     def __init__(self):
-        self.data = self.json_file = None
+        self.data = {}
+        self.json_file = None
         return
 
     @staticmethod
@@ -934,65 +935,90 @@ class ControlShapes:
 
         return
 
-    def _load(self, json_file=None, control=None):
+    def save(self, json_file=None, controls=[]):
+        to_save = {}
+        for c in controls:
+            size = map(lambda s: round(s[1] - s[0], 2),
+                       zip(*c.getBoundingBox()))
+            name = c.shape.get()
+            rgb = list(c.overrideColorRGB.get())
+
+            to_save[str(c)] = {"size": size, "shape": name, "rgb": rgb}
+
+        if json_file.exists():
+            with open(json_file) as f:
+                data = json.load(f)
+            data.update(to_save)
+        else:
+            data = to_save
+
+        with open(json_file, "w") as f:
+            json.dump(data, f, indent=4)
+        return json_file
+
+    def load(self, json_file=None):
         with open(json_file) as f:
             data = json.load(f)
 
-        sel = pm.ls(sl=1)[0]
-        getattr(self, data[control]["shape"])()
+        skipped = []
+        for k, v in data.items():
+            if not pm.objExists(k):
+                skipped += [k]
+                continue
 
-        trg = data[control]["size"]
-        rep = map(lambda s: s[1] - s[0], zip(*sel.getBoundingBox()))
+            control = pm.PyNode(k)
+            control.overrideEnabled.set(1)
+            control.overrideRGBColors.set(1)
+            control.overrideColorRGB.set(v["rgb"])
 
-        xyz = []
-        if not all(map(lambda x, y: x == y, trg, rep)):
-            for t, r in zip(trg, rep):
-                try:
-                    xyz += [round(t / r, 2)]
-                except ZeroDivisionError:
-                    xyz += [round(t, 2)]
+            pm.select(control)
+            self._set(v["shape"], bbx=v["size"])
 
-        sel.s.set(xyz)
-        pm.makeIdentity(sel, scale=1, apply=1)
-        pm.select(sel)
+        if skipped:
+            print ">> Skipped:", ", ".join(skipped)
+
+        pm.select(cl=1)
         return True
 
     @staticmethod
-    def _replace(sel, shape):
-        sel_scale = None
-        if not all(n == 1 for n in sel.s.get()):
-            sel_scale = sel.s.get()
-            sel.s.set([1] * 3)
+    def _replace(sel, shape, bbx=None):
+        pm.matchTransform(shape, sel)
 
-        rep = map(lambda s: s[1] - s[0], zip(*shape.getBoundingBox()))
-        # trg = map(lambda s: s[1] - s[0], zip(*sel.getBoundingBox()))
-        #
-        # xyz = []
-        # for t, r in zip(trg, rep):
-        #     try:
-        #         xyz += [round(t / r, 2)]
-        #     except ZeroDivisionError:
-        #         xyz += [round(t, 2)]
-        xyz = rep
-
-        shape.scale.set(xyz)
-        pm.makeIdentity(shape, scale=1, apply=1)
+        update_bbx = None
+        if pm.attributeQuery("shape", node=sel, exists=1):
+            if sel.shape.get() == shape and not bbx:
+                update_bbx = map(lambda s: s[1] - s[0],
+                                 zip(*sel.getBoundingBox()))
+            elif sel.shape.get() == shape and bbx:
+                update_bbx = bbx
 
         pm.delete(sel.getShapes())
         pm.select(shape.getShapes(), sel)
         pm.parent(r=1, s=1)
         pm.delete(shape)
 
-        if sel_scale:
-            sel.s.set(sel_scale)
+        if update_bbx:
+            current_bbx = map(lambda s: s[1] - s[0],
+                              zip(*sel.getBoundingBox()))
+            xyz = []
+            if not all(map(lambda x, y: x == y, update_bbx, current_bbx)):
+                for t, r in zip(update_bbx, current_bbx):
+                    try:
+                        xyz += [round(t / r, 2)]
+                    except ZeroDivisionError:
+                        xyz += [0]
+
+            for shp in sel.getShapes():
+                _all = shp.numCVs() - 1
+                pm.scale(shp.cv[:_all], xyz, r=1)
         return sel
 
-    def _set(self, name):
+    def _set(self, name, bbx=None):
         selected = pm.ls(sl=1)
         shape = globals()[name]()
 
         if selected:
-            selected = self._replace(selected[0], shape)
+            selected = self._replace(selected[0], shape, bbx=bbx)
         else:
             selected = shape
 
