@@ -48,8 +48,11 @@ class MyWindow(QtWidgets.QWidget):
         Initializes the UI by populating and setting up functional
         connections between widgets.
         """
-        self.ui.joints_sld.valueChanged.connect(self._joints)
+        self.ui.joints_sld.valueChanged.connect(self.joints_sld_changed)
         self.ui.joints_sld.sliderReleased.connect(self._select_root)
+
+        self.ui.numjoints_lne.returnPressed.connect(self.numjoint_lne_returned)
+
         self.ui.ikspline_btn.clicked.connect(self._ikspline)
         self.ui.ribbon_btn.clicked.connect(self._ribbon)
         return
@@ -59,7 +62,25 @@ class MyWindow(QtWidgets.QWidget):
         self.root = None
         return
 
-    def _joints(self):
+    def joints_sld_changed(self):
+        number = self.ui.joints_sld.value()
+        self._joints(number)
+
+        self.ui.numjoints_lne.setText("")
+        self.ui.numjoints_lne.setPlaceholderText(str(number))
+        return
+
+    def numjoint_lne_returned(self):
+        number = int(self.ui.numjoints_lne.text())
+        self._joints(number)
+        self._select_root()
+
+        self.ui.joints_sld.valueChanged.disconnect(self.joints_sld_changed)
+        self.ui.joints_sld.setSliderPosition(number)
+        self.ui.joints_sld.valueChanged.connect(self.joints_sld_changed)
+        return
+
+    def _joints(self, number):
         if pm.ls(sl=1) and isinstance(pm.ls(sl=1)[0], pm.nodetypes.NurbsCurve):
             pm.warning("No curve selected.")
             return
@@ -68,13 +89,29 @@ class MyWindow(QtWidgets.QWidget):
         if self.root:
             pm.delete(self.root)
             self.root = None
-        val = self.ui.joints_sld.value()
+
         chain_name = self.ui.name_lne.text()
-        self.root = joint_chain(curve, number=val, name=chain_name)
+        self.root = joint_chain(curve, number=number, name=chain_name)
         pm.select(curve)
         return
 
     def _ikspline(self):
+        if pm.ls(sl=1) and isinstance(pm.ls(sl=1)[0], pm.nodetypes.Joint):
+            pm.warning("No root joint selected.")
+            return
+
+        self.root = pm.ls(sl=1)[0]
+
+        from tools.ik_spline import Rig
+        spine = Rig()
+        spine.root_joint = self.root
+        self.spine.ik_spline()
+        self.spine.setup_controls()
+        self.spine.guts()
+        self.spine.connect("body_CON")
+        self.spine.clean_up()
+
+        self.root = None
         return
 
     def _ribbon(self):
