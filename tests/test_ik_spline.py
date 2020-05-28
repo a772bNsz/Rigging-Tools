@@ -1,9 +1,9 @@
 import unittest
 import pymel.core as pm
-from tools.spine import Rig
+from tools.ik_spline import Rig
 
 
-class TestSpine(unittest.TestCase):
+class TestIKSpline(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         print ">>>>> SETUP"
