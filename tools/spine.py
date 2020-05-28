@@ -96,7 +96,7 @@ class MyWindow(QtWidgets.QWidget):
         return
 
     def _ikspline(self):
-        if pm.ls(sl=1) and isinstance(pm.ls(sl=1)[0], pm.nodetypes.Joint):
+        if pm.ls(sl=1) and not isinstance(pm.ls(sl=1)[0], pm.nodetypes.Joint):
             pm.warning("No root joint selected.")
             return
 
@@ -105,11 +105,11 @@ class MyWindow(QtWidgets.QWidget):
         from tools.ik_spline import Rig
         spine = Rig()
         spine.root_joint = self.root
-        self.spine.ik_spline()
-        self.spine.setup_controls()
-        self.spine.guts()
-        self.spine.connect("body_CON")
-        self.spine.clean_up()
+        spine.ik_spline()
+        spine.setup_controls()
+        spine.guts()
+        spine.connect("body_CON")
+        spine.clean_up()
 
         self.root = None
         return
