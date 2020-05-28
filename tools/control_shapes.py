@@ -918,7 +918,8 @@ def two_arrow():
 
 class ControlShapes:
     def __init__(self):
-        self.data = self.json_file = None
+        self.data = {}
+        self.json_file = None
         return
 
     @staticmethod
@@ -934,7 +935,28 @@ class ControlShapes:
 
         return
 
-    def _load(self, json_file=None, control=None):
+    def save(self, json_file=None, controls=[]):
+        data = {}
+        for c in controls:
+            size = map(lambda s: round(s[1] - s[0], 2),
+                       zip(*c.getBoundingBox()))
+            name = c.shape.get()
+            rgb = list(c.overrideColorRGB.get())
+
+            data[str(c)] = {"size": size, "shape": name, "rgb": rgb}
+
+        if json_file.exists():
+            with open(json_file) as f:
+                self.data = json.load(f)
+            self.data.update(data)
+        else:
+            self.data = data
+
+        with open(json_file, "w") as f:
+            json.dump(self.data, f, indent=4)
+        return json_file
+
+    def load(self, json_file=None, control=None):
         with open(json_file) as f:
             data = json.load(f)
 
