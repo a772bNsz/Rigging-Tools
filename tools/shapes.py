@@ -139,9 +139,8 @@ class MyWindow(QtWidgets.QWidget):
         controls = pm.ls(sl=1)
 
         location = path(__file__).dirname().replace("tools", "results")
-        save_window = QtWidgets.QFileDialog.getSaveFileName(
-            self, "Save File", location, "JSON files (*.json)")
-        json_file = path(save_window[0])
+        json_file = path(QtWidgets.QFileDialog.getSaveFileName(
+            self, "Save JSON", location, "JSON files (*.json)")[0])
 
         if json_file:
             if not json_file.endswith(".json"):
@@ -150,4 +149,14 @@ class MyWindow(QtWidgets.QWidget):
         return json_file
 
     def load_file(self):
-        return
+        location = path(__file__).dirname().replace("tools", "results")
+        json_file, _filter = QtWidgets.QFileDialog.getOpenFileName(
+            self, "Load JSON", location, "JSON files (*.json)")
+
+        if json_file:
+            self.control_shapes.load(json_file=path(json_file))
+
+            import json
+            with open(json_file) as f:
+                data = json.load(f)
+        return data

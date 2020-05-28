@@ -21,22 +21,6 @@ class ControlShapesTest(unittest.TestCase):
     def tearDown(self):
         pm.select(cl=1)
 
-    def test_replace(self):
-        pm.polyTorus()[0]
-        self.assertTrue(self.cs.circle_nose(),
-                        "did not replace selection with shape")
-
-    def test_cube_to_locator(self):
-        sel = pm.spaceLocator()  # active selection
-        sel.t.set([10] * 3)
-        pos = self.cs.circle_nose().getTranslation(space="world")
-        self.assertTrue(all(map(lambda x: x == 10, pos)),
-                        "shape position is not correct in world space")
-
-    def test_multi_shape(self):
-        self.assertTrue(self.cs.gear(),
-                        "did not make combination shape")
-
     def test_save(self):
         pm.polyCylinder()[0].s.set([5] * 3)
         pm.duplicate(n="test_save")
@@ -71,8 +55,7 @@ class ControlShapesTest(unittest.TestCase):
 
         controls = []; e = 1
         for shp in ["axis_bold", "four_arrow_thin", "gear"]:
-            method = getattr(self.cs, shp)
-            controls += [method().rename("CON_"+str(e))]
+            controls += [getattr(self.cs, shp)().rename("CON_"+str(e))]
             controls[-1].tx.set(e*5)
             pm.select(cl=1)
             e += 1
@@ -84,18 +67,19 @@ class ControlShapesTest(unittest.TestCase):
 
         self.assertTrue(len(data) == 3, "json file was not created")
 
-    @unittest.skip("")
     def test_load(self):
-        pm.polyPlane(n="test_load")[0].s.set([5] * 3)
-        self.cs.triangle(save=1)
-        pm.delete("test_load")
+        controls = []; e = 1
+        for shp in ["axis_bold", "four_arrow_thin", "gear"]:
+            controls += [getattr(self.cs, shp)().rename("CON_"+str(e))]
+            controls[-1].tx.set(e*5)
+            pm.select(cl=1)
+            e += 1
 
-        json_file = self.cs.json_file
-        cs = ControlShapes()
-        pm.polyPlane(n="test_load")
+        f = path(__file__).dirname().replace("tests", "results")
+        json_file = path(f + "/test_save_all.json")
 
-        self.assertTrue(cs.load(json_file=json_file, control="test_load"),
-                        "did not load 'test_load'")
+        self.assertTrue(self.cs.load(json_file=json_file),
+                        "did not load shapes from file")
 
     @classmethod
     def tearDownClass(cls):
