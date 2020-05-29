@@ -44,32 +44,15 @@ class MyWindow(QtWidgets.QWidget):
         return ui
 
     def init_ui(self):
-        self.preset_buttons = self._load_preset_colors()
-        self.color_buttons = self._load_colors()
-        self.shape_buttons = self._load_shapes()
-
-        self._connect_preset_buttons()
-        self._connect_color_buttons()
-        self._connect_shape_buttons()
+        self._load_colors()
+        self._load_shapes()
 
         self.ui.save_btn.clicked.connect(self.save_file)
         self.ui.load_btn.clicked.connect(self.load_file)
-        return True
-
-    def _load_preset_colors(self):
-        presets = ["ik", "fk", "left", "middle", "right"]
-        data = self.color_shapes.get
-
-        preset_buttons = []
-        for p in presets:
-            rgb = data[p]
-            pbn = self.ui.findChild(QtWidgets.QPushButton, p+"_btn")
-            pbn.setStyleSheet("background-color: rgb({}, {}, {})".format(*rgb))
-            preset_buttons += [pbn]
-        return preset_buttons
+        return
 
     def _load_colors(self):
-        buttons = []
+        buttons = {}
         rows = 4
         columns = 8
         for r in range(rows):
@@ -78,12 +61,16 @@ class MyWindow(QtWidgets.QWidget):
                 if i >= 32:
                     break
 
-                buttons += [QtWidgets.QPushButton("")]
+                buttons[i] = QtWidgets.QPushButton("")
+
                 rgb = map(lambda x: int(x*255), pm.colorIndex(i, q=1))
-                buttons[-1].setStyleSheet(
+                buttons[i].setStyleSheet(
                     "background-color: rgb({}, {}, {})".format(*rgb))
-                buttons[-1].setToolTip(str(pm.colorIndex(i, q=1)))
-                self.ui.color_grd.addWidget(buttons[-1], r, c)
+
+                self.ui.color_grd.addWidget(buttons[i], r, c)
+
+        for i, pbn in buttons.items():
+            pbn.clicked.connect(lambda x=i: self._connect_color_buttons(x))
         return buttons
 
     def _load_shapes(self):
@@ -98,8 +85,6 @@ class MyWindow(QtWidgets.QWidget):
         thumbnails = path(
             path(__file__).dirname() + "/shape_thumbnails").files("*.tiff")
         for f, pbn in zip(thumbnails, buttons):
-            name = f.name.split(".")[0]
-            pbn.setToolTip(name)
             pbn.setMinimumHeight(60)
             pbn.setStyleSheet("background-color: black")
 
@@ -108,32 +93,37 @@ class MyWindow(QtWidgets.QWidget):
 
             pbn.setIcon(ico)
             pbn.setIconSize(QtCore.QSize(60, 60))
+
+            name = f.name.split(".")[0]
+            pbn.clicked.connect(lambda x=name: self._connect_shape_buttons(x))
         return buttons
 
-    def _change_color_on_selection(self, arg):
+    def _connect_color_buttons(self, index):
         self.color_shapes.sel = pm.ls(sl=1)
-        self.color_shapes.set(arg)
-        return True
+        self.color_shapes.index = index
+        self.color_shapes.by_index()
+        return
 
-    def _connect_preset_buttons(self):
-        presets = ["ik", "fk", "left", "middle", "right"]
+    def _connect_shape_buttons(self, name):
+        selected = pm.ls(sl=1)
 
-        for p in presets:
-            pbn = self.ui.findChild(QtWidgets.QPushButton, p+"_btn")
-            pbn.clicked.connect(lambda x=p: self._change_color_on_selection(x))
-        return True
+        if selected:
+            shape_and_colors = {}
+            for sel in selected:
+                sel_shape = sel.getShapes()[0]
+                if sel_shape.overrideEnabled.get():
+                    shape_and_colors[sel] = sel_shape.overrideColor.get()
 
-    def _connect_color_buttons(self):
-        for pbn in self.color_buttons:
-            rgb = map(lambda x: float(x), pbn.toolTip()[1:-1].split(", "))
-            pbn.clicked.connect(
-                lambda x=rgb: self._change_color_on_selection(x))
-        return True
-
-    def _connect_shape_buttons(self):
-        for pbn in self.shape_buttons:
-            pbn.clicked.connect(getattr(self.control_shapes, pbn.toolTip()))
-        return True
+            for sel in selected:
+                getattr(self.control_shapes, name)()
+                try:
+                    sel.overrideEnabled.set(1)
+                    sel.overrideColor.set(shape_and_colors[sel])
+                except:
+                    pass
+        else:
+            getattr(self.control_shapes, name)()
+        return
 
     def save_file(self):
         controls = pm.ls(sl=1)
