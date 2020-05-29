@@ -981,21 +981,26 @@ class ControlShapes:
         return True
 
     @staticmethod
-    def _replace(sel, shape, bbx=None):
-        pm.matchTransform(shape, sel)
+    def _replace(sel, curve, shape=None, bbx=None):
+        pm.matchTransform(curve, sel)
 
         update_bbx = None
+        shape_match = False
         if pm.attributeQuery("shape", node=sel, exists=1):
-            if sel.shape.get() == shape and not bbx:
-                update_bbx = map(lambda s: s[1] - s[0],
-                                 zip(*sel.getBoundingBox()))
-            elif sel.shape.get() == shape and bbx:
+            if sel.shape.get() == shape:
+                shape_match = True
+
+        if shape_match:
+            if bbx:
                 update_bbx = bbx
+            else:
+                update_bbx = \
+                    map(lambda s: s[1] - s[0], zip(*sel.getBoundingBox()))
 
         pm.delete(sel.getShapes())
-        pm.select(shape.getShapes(), sel)
+        pm.select(curve.getShapes(), sel)
         pm.parent(r=1, s=1)
-        pm.delete(shape)
+        pm.delete(curve)
 
         if update_bbx:
             current_bbx = map(lambda s: s[1] - s[0],
@@ -1015,12 +1020,12 @@ class ControlShapes:
 
     def _set(self, name, bbx=None):
         selected = pm.ls(sl=1)
-        shape = globals()[name]()
+        curve = globals()[name]()
 
         if selected:
-            selected = self._replace(selected[0], shape, bbx=bbx)
+            selected = self._replace(selected[0], curve, shape=name, bbx=bbx)
         else:
-            selected = shape
+            selected = curve
 
         if pm.attributeQuery("shape", node=selected, exists=1):
             selected.shape.unlock()
