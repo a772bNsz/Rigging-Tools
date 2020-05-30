@@ -21,8 +21,35 @@ class ControlShapesTest(unittest.TestCase):
     def tearDown(self):
         pm.select(cl=1)
 
+    @unittest.skip("")
+    def test_default(self):
+        name = "arrow_circle"
+        shape = getattr(self.cs, name)()
+        position = all(x == 0 for x in shape.t.get())
+        self.assertTrue(position, "default shape not created")
+
+    @unittest.skip("")
+    def test_match_locator(self):
+        selected = pm.spaceLocator(n="test_match_by_bbx")
+        selected.ty.set(2)
+        selected.r.set([1.67, 0, -45])
+        selected.s.set([2.71]*3)
+
+        bbx1 = map(lambda s: s[1] - s[0], zip(*selected.getBoundingBox()))
+        name = "circle_spikes"
+        shape = self.cs._match_locator(name, selected)
+        bbx2 = map(lambda s: s[1] - s[0], zip(*shape.getBoundingBox()))
+        within_original_bbx = max(bbx1) >= max(bbx2)
+        self.assertTrue(within_original_bbx,
+                        "new shape is larger than original shape")
+
+    @unittest.skip("")
     def test_save(self):
-        pm.polyCylinder()[0].s.set([5] * 3)
+        selected = pm.spaceLocator()
+        selected.ty.set(2)
+        selected.r.set([1.67, 0, -45])
+        selected.s.set([2.71]*3)
+
         pm.duplicate(n="test_save")
         f = path(__file__).dirname().replace("tests", "results")
         json_file = path(f + "/test_save.json")
@@ -30,6 +57,7 @@ class ControlShapesTest(unittest.TestCase):
         self.assertTrue(self.cs.save(json_file=json_file, controls=controls),
                         "did not save")
 
+    @unittest.skip("")
     def test_save_overwrite(self):
         f = path(__file__).dirname().replace("tests", "results")
         json_file = path(f + "/test_save_overwrite.json")
@@ -39,16 +67,18 @@ class ControlShapesTest(unittest.TestCase):
         controls = [self.cs.eight_star()]
         self.cs.save(json_file=json_file, controls=controls)
 
+        pm.select(sel)
         sel.s.set([5] * 3)
-        controls = [self.cs.teardrop()]
+        controls = [self.cs.gear()]
         self.cs.save(json_file=json_file, controls=controls)
 
         with open(json_file) as f:
             data = json.load(f)
 
-        self.assertEqual(data["test_save_overwrite"]["shape"], "teardrop",
-                         "did not save")
+        updated = data["test_save_overwrite"]["control"].count("curve")
+        self.assertTrue(updated, "did not save")
 
+    @unittest.skip("")
     def test_save_all(self):
         f = path(__file__).dirname().replace("tests", "results")
         json_file = path(f + "/test_save_all.json")
@@ -57,6 +87,8 @@ class ControlShapesTest(unittest.TestCase):
         for shp in ["axis_bold", "four_arrow_thin", "gear"]:
             controls += [getattr(self.cs, shp)().rename("CON_"+str(e))]
             controls[-1].tx.set(e*5)
+            controls[-1].ry.set(e*30)
+            controls[-1].sz.set(e*1.2)
             pm.select(cl=1)
             e += 1
 
@@ -67,24 +99,29 @@ class ControlShapesTest(unittest.TestCase):
 
         self.assertTrue(len(data) == 3, "json file was not created")
 
+    @unittest.skipIf(
+        not path("/root/workdir/results/test_save_all.json").exists(),
+        "No such file or directory: test_save_all.json"
+    )
     def test_load(self):
-        controls = []; e = 1
-        for shp in ["axis_bold", "four_arrow_thin", "gear"]:
-            controls += [getattr(self.cs, shp)().rename("CON_"+str(e))]
-            controls[-1].tx.set(e*5)
+        controls = []
+        for i in range(1, 4):
+            controls += [pm.spaceLocator().rename("CON_"+str(i))]
+            controls[-1].tx.set(i*5)
+            controls[-1].ry.set(i*30)
+            controls[-1].sz.set(i*1.2)
             pm.select(cl=1)
-            e += 1
 
         f = path(__file__).dirname().replace("tests", "results")
         json_file = path(f + "/test_save_all.json")
+        self.cs.load(json_file=json_file)
 
-        self.assertTrue(self.cs.load(json_file=json_file),
-                        "did not load shapes from file")
+        locator = pm.attributeQuery("localScaleY", node="CON_3", ex=1)
+        self.assertFalse(locator, "did not load shapes from file")
 
     @classmethod
     def tearDownClass(cls):
-        f = path(__file__).name.split(".")[0] + ".ma"
-        pm.saveAs(f, type="mayaAscii")
+        pm.saveAs("result.ma", type="mayaAscii")
         print ">>>>> TEARDOWN"
 
 
