@@ -10,7 +10,7 @@ def print_function(sel):
     prints a function for recreating selected curve
     """
 
-    print """
+    statement = """
 def {0}():
     shapes = [""".format(sel)
 
@@ -32,7 +32,8 @@ def {0}():
             if "-0.0" == str(kn):
                 kn = 0.0
 
-        print """        pm.curve(     
+        statement += """
+        pm.curve(     
             d={}, periodic={},
             knot={},
             point={}
@@ -49,10 +50,13 @@ def {0}():
     if len(sel.getShapes()) == 1:
         add_on = ""
 
-    print """    ]
+    statement += """
+    ]
     {}
-    return shapes[0]""".format(add_on)
-    return
+    shapes = shapes[0]
+    pm.select(shapes)
+    return shapes""".format(add_on)
+    return statement
 
 
 def arrow_circle():
@@ -938,12 +942,9 @@ class ControlShapes:
     def save(self, json_file=None, controls=[]):
         to_save = {}
         for c in controls:
-            size = map(lambda s: round(s[1] - s[0], 2),
-                       zip(*c.getBoundingBox()))
-            name = c.shape.get()
-            rgb = list(c.overrideColorRGB.get())
-
-            to_save[str(c)] = {"size": size, "shape": name, "rgb": rgb}
+            index = c.overrideColor.get()
+            function_statement = print_function(c) + "\n{}()".format(c)
+            to_save[str(c)] = {"control": function_statement, "color": index}
 
         if json_file.exists():
             with open(json_file) as f:
@@ -966,13 +967,16 @@ class ControlShapes:
                 skipped += [k]
                 continue
 
+            exec(v["control"])
+            shape = pm.ls(sl=1)[0]
             control = pm.PyNode(k)
-            control.overrideEnabled.set(1)
-            control.overrideRGBColors.set(1)
-            control.overrideColorRGB.set(v["rgb"])
 
-            pm.select(control)
-            self._set(v["shape"], bbx=v["size"])
+            pm.delete(control.getShapes())
+            pm.parent(shape.getShapes(), control, r=1, s=1)
+            pm.delete(shape)
+
+            control.overrideEnabled.set(1)
+            control.overrideColor.set(v["color"])
 
         if skipped:
             print ">> Skipped:", ", ".join(skipped)
@@ -981,62 +985,32 @@ class ControlShapes:
         return True
 
     @staticmethod
-    def _replace(sel, curve, shape=None, bbx=None):
-        pm.matchTransform(curve, sel)
-
-        update_bbx = None
-        shape_match = False
-        if pm.attributeQuery("shape", node=sel, exists=1):
-            if sel.shape.get() == shape:
-                shape_match = True
-
-        if shape_match:
-            if bbx:
-                update_bbx = bbx
-            else:
-                update_bbx = \
-                    map(lambda s: s[1] - s[0], zip(*sel.getBoundingBox()))
-
-        pm.delete(sel.getShapes())
-        pm.select(curve.getShapes(), sel)
-        pm.parent(r=1, s=1)
-        pm.delete(curve)
-
-        if update_bbx:
-            current_bbx = map(lambda s: s[1] - s[0],
-                              zip(*sel.getBoundingBox()))
-            xyz = []
-            if not all(map(lambda x, y: x == y, update_bbx, current_bbx)):
-                for t, r in zip(update_bbx, current_bbx):
-                    try:
-                        xyz += [round(t / r, 2)]
-                    except ZeroDivisionError:
-                        xyz += [0]
-
-            for shp in sel.getShapes():
-                _all = shp.numCVs() - 1
-                pm.scale(shp.cv[:_all], xyz, r=1)
-        return sel
-
-    def _set(self, name, bbx=None):
-        selected = pm.ls(sl=1)
+    def _match_locator(name, selected):
         curve = globals()[name]()
 
+        pm.matchTransform(curve, selected, scl=1)
+
+        sel_bbx = map(lambda s: s*2, selected.s.get())
+        crv_bbx = map(lambda s: s[1] - s[0], zip(*curve.getBoundingBox()))
+        scale_value = max(sel_bbx) / max(crv_bbx)
+
+        for shp in curve.getShapes():
+            cvs = shp.numCVs() - 1
+            pm.scale(shp.cv[:cvs], [scale_value]*3, r=1)
+
+        pm.delete(selected.getShapes())
+        pm.parent(curve.getShapes(), selected, r=1, s=1)
+        pm.delete(curve)
+        return selected
+
+    def _set(self, name):
+        selected = pm.ls(sl=1)
+
         if selected:
-            selected = self._replace(selected[0], curve, shape=name, bbx=bbx)
+            selected = selected[0]
+            selected = self._match_locator(name, selected)  # shape change
         else:
-            selected = curve
-
-        if pm.attributeQuery("shape", node=selected, exists=1):
-            selected.shape.unlock()
-            selected.shape.set(name)
-            selected.shape.lock()
-        else:
-            selected.addAttr("shape", dt="string")
-            selected.shape.set(name)
-            selected.shape.lock()
-
-        pm.select(selected)
+            selected = globals()[name]()  # create default shape at origin
         return selected
 
     def arrow_circle(self):

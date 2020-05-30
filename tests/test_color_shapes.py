@@ -34,29 +34,9 @@ class ColorShapesTest(unittest.TestCase):
     def tearDown(self):
         pm.select(cl=1)
 
-    def test_assign(self):
-        self.cs._assign("ik", rgb=self.cs.get["yellow"])
-        self.assertEqual(self.cs.get["ik"], self.cs.get["yellow"],
-                         "did not assign")
-
-    def test_set_by_name(self):
-        with self.assertRaises(ValueError):
-            self.cs.set("fk")
-
-    def test_set_by_rgb(self):
-        self.cs.sel[0].rename("fuchsia")
-        self.assertTrue(self.cs.set([255, 0, 255]), "did not set by rgb")
-
-    def test_set_update_by_name(self):
-        self.cs.sel[0].rename("aqua")
-        self.cs.set("aqua", rgb=[0, 255, 255], add=1)
-        self.assertTrue(self.cs.set("fk", name="aqua", add=1),
-                        "did not assign by name")
-
-    def test_set_update_by_rgb(self):
-        self.cs.sel[0].rename("yellow")
-        self.assertTrue(self.cs.set("left", rgb=[255, 255, 0], add=1),
-                        "did not assign by rgb")
+    def test_color_by_index(self):
+        self.cs.index = 4
+        self.cs.by_index()
 
     @classmethod
     def tearDownClass(cls):
