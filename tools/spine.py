@@ -102,8 +102,9 @@ class MyWindow(QtWidgets.QWidget):
 
         self.root = pm.ls(sl=1)[0]
 
-        from tools.ik_spline import Rig
-        spine = Rig()
+        from tools import ik_spline
+        reload(ik_spline)
+        spine = ik_spline.Rig()
         spine.root_joint = self.root
         spine.ik_spline()
         spine.setup_controls()

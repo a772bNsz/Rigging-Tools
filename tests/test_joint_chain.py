@@ -7,7 +7,7 @@ import pymel.core as pm
 from tools.joint_chain import joint_chain
 
 
-class SampleTest(unittest.TestCase):
+class JointChainTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         pm.system.newFile()
@@ -27,7 +27,7 @@ class SampleTest(unittest.TestCase):
 
     def test_chain_name(self):
         self.assertEqual(joint_chain(self.curve, number=10, name="spine#_JNT"),
-                         "spine1_JNT",
+                         "spine1_result_JNT",
                          "did not rename or # is not 1")
 
     @classmethod

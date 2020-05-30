@@ -83,7 +83,7 @@ class Rig:
             ofs.rotateOrder.set(v["rotateOrder"])
 
             try:
-                pm.matchTransform(ofs, v["snapTo"])
+                pm.matchTransform(ofs, v["snapTo"], pos=1)
                 pm.parent(ofs, v["parent"], a=1)
             except:
                 pass
