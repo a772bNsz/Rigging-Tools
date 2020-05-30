@@ -94,7 +94,9 @@ def arrow_circle():
         ),
     ]
 
-    return shapes[0]
+    shapes = shapes[0]
+    pm.select(shapes)
+    return shapes
 
 
 def arrow_large():
@@ -109,7 +111,9 @@ def arrow_large():
         ),
     ]
 
-    return shapes[0]
+    shapes = shapes[0]
+    pm.select(shapes)
+    return shapes
 
 
 def arrow_medium():
@@ -123,7 +127,9 @@ def arrow_medium():
         ),
     ]
 
-    return shapes[0]
+    shapes = shapes[0]
+    pm.select(shapes)
+    return shapes
 
 
 def arrow_small():
@@ -136,7 +142,9 @@ def arrow_small():
         ),
     ]
 
-    return shapes[0]
+    shapes = shapes[0]
+    pm.select(shapes)
+    return shapes
 
 
 def arrow():
@@ -149,7 +157,9 @@ def arrow():
         ),
     ]
 
-    return shapes[0]
+    shapes = shapes[0]
+    pm.select(shapes)
+    return shapes
 
 
 def axis_bold():
@@ -192,7 +202,9 @@ def axis_bold():
         ),
     ]
 
-    return shapes[0]
+    shapes = shapes[0]
+    pm.select(shapes)
+    return shapes
 
 
 def axis():
@@ -206,7 +218,9 @@ def axis():
         ),
     ]
 
-    return shapes[0]
+    shapes = shapes[0]
+    pm.select(shapes)
+    return shapes
 
 
 def circle_arrow_up():
@@ -234,7 +248,9 @@ def circle_arrow_up():
         ),
     ]
 
-    return shapes[0]
+    shapes = shapes[0]
+    pm.select(shapes)
+    return shapes
 
 
 def circle_nose():
@@ -254,7 +270,9 @@ def circle_nose():
         ),
     ]
 
-    return shapes[0]
+    shapes = shapes[0]
+    pm.select(shapes)
+    return shapes
 
 
 def circle_spikes_long():
@@ -289,7 +307,9 @@ def circle_spikes_long():
         ),
     ]
 
-    return shapes[0]
+    shapes = shapes[0]
+    pm.select(shapes)
+    return shapes
 
 
 def circle_spikes():
@@ -324,7 +344,9 @@ def circle_spikes():
         ),
     ]
 
-    return shapes[0]
+    shapes = shapes[0]
+    pm.select(shapes)
+    return shapes
 
 
 def cone():
@@ -349,7 +371,9 @@ def cone():
         ),
     ]
 
-    return shapes[0]
+    shapes = shapes[0]
+    pm.select(shapes)
+    return shapes
 
 
 def cross():
@@ -362,7 +386,9 @@ def cross():
         ),
     ]
 
-    return shapes[0]
+    shapes = shapes[0]
+    pm.select(shapes)
+    return shapes
 
 
 def cube_sphere():
@@ -402,7 +428,9 @@ def cube_sphere():
         ),
     ]
 
-    return shapes[0]
+    shapes = shapes[0]
+    pm.select(shapes)
+    return shapes
 
 
 def cube():
@@ -423,7 +451,9 @@ def cube():
         ),
     ]
 
-    return shapes[0]
+    shapes = shapes[0]
+    pm.select(shapes)
+    return shapes
 
 
 def eight_star():
@@ -445,7 +475,9 @@ def eight_star():
         ),
     ]
 
-    return shapes[0]
+    shapes = shapes[0]
+    pm.select(shapes)
+    return shapes
 
 
 def four_arrow_circle():
@@ -510,7 +542,9 @@ def four_arrow_circle():
         ),
     ]
 
-    return shapes[0]
+    shapes = shapes[0]
+    pm.select(shapes)
+    return shapes
 
 
 def four_arrow_thin():
@@ -536,7 +570,9 @@ def four_arrow_thin():
         ),
     ]
 
-    return shapes[0]
+    shapes = shapes[0]
+    pm.select(shapes)
+    return shapes
 
 
 def four_arrow():
@@ -562,7 +598,9 @@ def four_arrow():
         ),
     ]
 
-    return shapes[0]
+    shapes = shapes[0]
+    pm.select(shapes)
+    return shapes
 
 
 def gear():
@@ -638,7 +676,9 @@ def gear():
             pm.parent(r=1, s=1)
             pm.delete(shp)
 
-    return shapes[0]
+    shapes = shapes[0]
+    pm.select(shapes)
+    return shapes
 
 
 def line():
@@ -650,7 +690,9 @@ def line():
         ),
     ]
 
-    return shapes[0]
+    shapes = shapes[0]
+    pm.select(shapes)
+    return shapes
 
 
 def needle():
@@ -667,7 +709,9 @@ def needle():
         ),
     ]
 
-    return shapes[0]
+    shapes = shapes[0]
+    pm.select(shapes)
+    return shapes
 
 
 def sphere():
@@ -721,7 +765,9 @@ def sphere():
         ),
     ]
 
-    return shapes[0]
+    shapes = shapes[0]
+    pm.select(shapes)
+    return shapes
 
 
 def square():
@@ -734,7 +780,9 @@ def square():
         ),
     ]
 
-    return shapes[0]
+    shapes = shapes[0]
+    pm.select(shapes)
+    return shapes
 
 
 def teardrop():
@@ -751,7 +799,9 @@ def teardrop():
         ),
     ]
 
-    return shapes[0]
+    shapes = shapes[0]
+    pm.select(shapes)
+    return shapes
 
 
 def three_arrow_circle():
@@ -807,7 +857,9 @@ def three_arrow_circle():
         ),
     ]
 
-    return shapes[0]
+    shapes = shapes[0]
+    pm.select(shapes)
+    return shapes
 
 
 def triangle():
@@ -820,7 +872,9 @@ def triangle():
         ),
     ]
 
-    return shapes[0]
+    shapes = shapes[0]
+    pm.select(shapes)
+    return shapes
 
 
 def two_arrow_bend():
@@ -852,7 +906,9 @@ def two_arrow_bend():
         ),
     ]
 
-    return shapes[0]
+    shapes = shapes[0]
+    pm.select(shapes)
+    return shapes
 
 
 def two_arrow_circle():
@@ -899,7 +955,9 @@ def two_arrow_circle():
         ),
     ]
 
-    return shapes[0]
+    shapes = shapes[0]
+    pm.select(shapes)
+    return shapes
 
 
 def two_arrow():
@@ -917,7 +975,9 @@ def two_arrow():
         ),
     ]
 
-    return shapes[0]
+    shapes = shapes[0]
+    pm.select(shapes)
+    return shapes
 
 
 class ControlShapes:
