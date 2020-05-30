@@ -55,10 +55,16 @@ class MyWindow(QtWidgets.QWidget):
         buttons = {}
         rows = 4
         columns = 8
+        default_btn = None
         for r in range(rows):
             for c in range(columns):
                 i = (r*columns) + c + 1
                 if i >= 32:
+                    default_btn = QtWidgets.QPushButton("")
+                    default_btn.setStyleSheet("""
+                        background-color: Transparent;
+                        """)
+                    self.ui.color_grd.addWidget(default_btn, r, c)
                     break
 
                 buttons[i] = QtWidgets.QPushButton("")
@@ -71,7 +77,14 @@ class MyWindow(QtWidgets.QWidget):
 
         for i, pbn in buttons.items():
             pbn.clicked.connect(lambda x=i: self._connect_color_buttons(x))
+
+        default_btn.clicked.connect(self._no_color)
         return buttons
+
+    def _no_color(self):
+        self.color_shapes.sel = pm.ls(sl=1)
+        self.color_shapes.default()
+        return
 
     def _load_shapes(self):
         buttons = []
@@ -115,14 +128,17 @@ class MyWindow(QtWidgets.QWidget):
                     shape_and_colors[sel] = sel_shape.overrideColor.get()
 
             for sel in selected:
+                pm.select(sel)
                 getattr(self.control_shapes, name)()
                 try:
-                    sel.overrideEnabled.set(1)
-                    sel.overrideColor.set(shape_and_colors[sel])
+                    self.color_shapes.sel = sel
+                    self.color_shapes.index = shape_and_colors[sel]
+                    self.color_shapes.by_index()
                 except:
                     pass
         else:
-            getattr(self.control_shapes, name)()
+            selected = getattr(self.control_shapes, name)()
+        pm.select(selected)
         return
 
     def save_file(self):

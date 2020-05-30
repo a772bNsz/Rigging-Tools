@@ -16,3 +16,12 @@ class ColorShapes:
         rgb = map(lambda x: int(x*255), pm.colorIndex(self.index, q=1))
         self.sel = self.index = None
         return rgb
+
+    def default(self):
+        for crv in self.sel:
+            for shp in crv.getShapes():
+                shp.overrideColor.set(0)
+                shp.overrideEnabled.set(0)
+
+        self.sel = None
+        return True

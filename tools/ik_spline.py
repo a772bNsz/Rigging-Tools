@@ -23,7 +23,7 @@ class Rig:
     def ik_spline(self):
         self.end_joint = self.root_joint.getChildren(ad=1)[0]
         pm.joint(self.root_joint, e=1, oj="xzy", sao="xup", ch=1, zso=1)
-        pm.setAttr("spine7_result_JNT.jointOrient", [0, 0, 0])
+        pm.setAttr(self.end_joint.jointOrient, [0, 0, 0])
 
         hdl, eff, crv = pm.ikHandle(n="spine_HDL",
                                     sj=self.root_joint,
@@ -84,6 +84,8 @@ class Rig:
 
             try:
                 pm.matchTransform(ofs, v["snapTo"], pos=1)
+                if "FK" in str(ofs):
+                    pm.matchTransform(ofs, v["snapTo"])
                 pm.parent(ofs, v["parent"], a=1)
             except:
                 pass

@@ -40,6 +40,9 @@
      </item>
      <item>
       <widget class="QLineEdit" name="name_lne">
+       <property name="focusPolicy">
+        <enum>Qt::ClickFocus</enum>
+       </property>
        <property name="placeholderText">
         <string>joint#</string>
        </property>
@@ -87,6 +90,9 @@
          <width>25</width>
          <height>16777215</height>
         </size>
+       </property>
+       <property name="focusPolicy">
+        <enum>Qt::ClickFocus</enum>
        </property>
        <property name="alignment">
         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>

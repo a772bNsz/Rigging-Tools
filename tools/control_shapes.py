@@ -1002,7 +1002,7 @@ class ControlShapes:
     def save(self, json_file=None, controls=[]):
         to_save = {}
         for c in controls:
-            index = c.overrideColor.get()
+            index = c.getShapes()[0].overrideColor.get()
             function_statement = print_function(c) + "\n{}()".format(c)
             to_save[str(c)] = {"control": function_statement, "color": index}
 
@@ -1061,6 +1061,7 @@ class ControlShapes:
         pm.delete(selected.getShapes())
         pm.parent(curve.getShapes(), selected, r=1, s=1)
         pm.delete(curve)
+        pm.select(selected)
         return selected
 
     def _set(self, name):
