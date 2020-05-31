@@ -1035,8 +1035,9 @@ class ControlShapes:
             pm.parent(shape.getShapes(), control, r=1, s=1)
             pm.delete(shape)
 
-            control.overrideEnabled.set(1)
-            control.overrideColor.set(v["color"])
+            for shp in control.getShapes():
+                shp.overrideEnabled.set(1)
+                shp.overrideColor.set(v["color"])
 
         if skipped:
             print ">> Skipped:", ", ".join(skipped)
