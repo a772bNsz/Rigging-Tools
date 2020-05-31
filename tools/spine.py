@@ -55,6 +55,9 @@ class MyWindow(QtWidgets.QWidget):
 
         self.ui.ikspline_btn.clicked.connect(self._ikspline)
         self.ui.ribbon_btn.clicked.connect(self._ribbon)
+
+        # REMOVE RIBBON FOR NOW
+        self.ui.ribbon_btn.deleteLater()
         return
 
     def _select_root(self):
@@ -95,24 +98,22 @@ class MyWindow(QtWidgets.QWidget):
         pm.select(curve)
         return
 
-    def _ikspline(self):
+    @staticmethod
+    def _ikspline():
         if pm.ls(sl=1) and not isinstance(pm.ls(sl=1)[0], pm.nodetypes.Joint):
             pm.warning("No root joint selected.")
             return
 
-        self.root = pm.ls(sl=1)[0]
+        root = pm.ls(sl=1)[0]
 
         from tools import ik_spline
         reload(ik_spline)
-        spine = ik_spline.Rig()
-        spine.root_joint = self.root
+        spine = ik_spline.Rig(root)
         spine.ik_spline()
         spine.setup_controls()
         spine.guts()
         spine.connect("body_CON")
         spine.clean_up()
-
-        self.root = None
         return
 
     def _ribbon(self):

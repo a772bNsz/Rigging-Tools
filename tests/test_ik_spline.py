@@ -7,19 +7,19 @@ class TestIKSpline(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         print ">>>>> SETUP"
-        cls.spine = Rig()
-        pm.newFile(f=1)
 
     def setUp(self):
         pm.newFile(f=1)
-        self.spine.root_joint = \
-            pm.joint(n="spine1_result_JNT", p=[0.0, 91.23, -0.45])
+
+        root = pm.joint(n="spine1_result_JNT", p=[0.0, 91.23, -0.45])
         pm.joint(n="spine2_result_JNT", p=[0.0, 99.23, -0.37])
         pm.joint(n="spine3_result_JNT", p=[0.0, 107.23, -0.19])
         pm.joint(n="spine4_result_JNT", p=[0.0, 115.23, 0.05])
         pm.joint(n="spine5_result_JNT", p=[0.0, 123.23, 0.3])
         pm.joint(n="spine6_result_JNT", p=[0.0, 131.22, 0.53])
         pm.joint(n="spine7_result_JNT", p=[0.0, 139.22, 0.7])
+
+        self.spine = Rig(root)
 
     @unittest.skip("")
     def test_ik_spline(self):

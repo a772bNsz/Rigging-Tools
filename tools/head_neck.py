@@ -3,9 +3,16 @@ from collections import OrderedDict
 
 
 class Rig:
-    def __init__(self):
+    def __init__(self, root):
         self.controls = self.skin_joints = []
-        self.root_joint = self.end_joint = None
+
+        neck_chain = [root] + root.getChildren(ad=1)[::-1]
+        i = 1
+        for jnt in neck_chain[1:-1]:
+            jnt.rename("neck_mid{}_result_JNT".format(i))
+            i += 1
+        self.root_joint = neck_chain[0].rename("neck_base_result_JNT")
+        self.end_joint = neck_chain[-1].rename("neck_end_result_JNT")
 
     def ik_spline(self):
         self.end_joint = self.root_joint.getChildren(ad=1, type="joint")[0]

@@ -16,9 +16,16 @@ from collections import OrderedDict
 
 
 class Rig:
-    def __init__(self):
+    def __init__(self, root):
         self.controls = self.skin_joints = []
-        self.root_joint = self.end_joint = None
+
+        spine_chain = [root] + root.getChildren(ad=1)[::-1]
+        i = 1
+        for jnt in spine_chain:
+            jnt.rename("spine{}_result_JNT".format(i))
+            i += 1
+        self.root_joint = spine_chain[0]
+        self.end_joint = spine_chain[-1]
 
     def ik_spline(self):
         self.end_joint = self.root_joint.getChildren(ad=1)[0]
@@ -58,12 +65,12 @@ class Rig:
             "parent": "torso_GRP"
         }
         controls["spine1_FK_CON"] = {
-            "snapTo": "spine3_result_JNT",
+            "snapTo": ["spine_CRV", 3/7.0],
             "rotateOrder": 1,  # yzx
             "parent": "torso_GRP"
         }
         controls["spine2_FK_CON"] = {
-            "snapTo": "spine5_result_JNT",
+            "snapTo": ["spine_CRV", 5/7.0],
             "rotateOrder": 1,  # yzx
             "parent": "spine1_FK_CON"
         }
@@ -83,11 +90,14 @@ class Rig:
             ofs.rotateOrder.set(v["rotateOrder"])
 
             try:
-                pm.matchTransform(ofs, v["snapTo"], pos=1)
                 if "FK" in str(ofs):
-                    pm.matchTransform(ofs, v["snapTo"])
+                    curve, percent = v["snapTo"]
+                    position = pm.pointOnCurve(curve, pr=percent, p=1, top=1)
+                    ofs.t.set(position)
+                else:
+                    pm.matchTransform(ofs, v["snapTo"], pos=1)
                 pm.parent(ofs, v["parent"], a=1)
-            except:
+            except KeyError:
                 pass
 
         pm.parent("torso_GRP", "root_transform_CON")
