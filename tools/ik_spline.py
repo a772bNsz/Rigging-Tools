@@ -30,7 +30,7 @@ class Rig:
     def ik_spline(self):
         self.end_joint = self.root_joint.getChildren(ad=1)[0]
         pm.joint(self.root_joint, e=1, oj="xzy", sao="xup", ch=1, zso=1)
-        pm.setAttr(self.end_joint.jointOrient, [0, 0, 0])
+        self.end_joint.jointOrient.set([0, 0, 0])
 
         hdl, eff, crv = pm.ikHandle(n="spine_HDL",
                                     sj=self.root_joint,
