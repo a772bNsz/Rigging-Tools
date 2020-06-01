@@ -108,7 +108,6 @@ class HeadNeckTest(unittest.TestCase):
         self.assertTrue(self.neck.clean_up(),
                         "did not clean up")
 
-    @unittest.skip("")
     def test_clean_up_with_space_switch(self):
         self.neck.ik_spline()
         self.neck.setup_controls()

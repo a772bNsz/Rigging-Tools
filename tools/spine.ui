@@ -44,7 +44,7 @@
         <enum>Qt::ClickFocus</enum>
        </property>
        <property name="placeholderText">
-        <string>joint#</string>
+        <string>spine#_result_JNT</string>
        </property>
       </widget>
      </item>
@@ -64,7 +64,7 @@
         <number>20</number>
        </property>
        <property name="sliderPosition">
-        <number>2</number>
+        <number>7</number>
        </property>
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
@@ -98,7 +98,7 @@
         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
        </property>
        <property name="placeholderText">
-        <string>2</string>
+        <string>7</string>
        </property>
       </widget>
      </item>
