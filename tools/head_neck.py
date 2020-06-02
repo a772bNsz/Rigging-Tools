@@ -17,6 +17,7 @@ class Rig:
     def ik_spline(self):
         self.end_joint = self.root_joint.getChildren(ad=1, type="joint")[0]
         pm.joint(self.root_joint, e=1, oj="xzy", sao="xup", ch=1, zso=1)
+        self.end_joint.jointOrient.set(0, 0, 0)
         hdl, eff, crv = pm.ikHandle(n="neck_HDL",
                                     sj=self.root_joint,
                                     ee=self.end_joint,
@@ -56,11 +57,8 @@ class Rig:
             con.rotateOrder.set(v["rotateOrder"])
             ofs.rotateOrder.set(v["rotateOrder"])
 
-            try:
-                pm.matchTransform(ofs, v["snapTo"])
-                pm.parent(ofs, v["parent"], a=1)
-            except:
-                pass
+            pm.matchTransform(ofs, v["snapTo"], pos=1)
+            pm.parent(ofs, v["parent"], a=1)
 
         pm.parent("head_neck_GRP", "root_transform_CON")
         pm.parent("root_transform_CON", w=1)
@@ -80,26 +78,32 @@ class Rig:
 
         map(lambda x: x.rotate.set(0, 0, 0), bind_joints)
 
+        pm.parent(neck_end_bind, neck_base_bind)
+        pm.joint(neck_base_bind, e=1, oj="yxz", sao="xup", ch=1, zso=1)
+        neck_end_bind.jointOrient.set(0, 0, 0)
+        pm.parent(neck_end_bind, w=1)
+
         neck_base_bind.rotateOrder.set(
             self.controls["neck_CON"]["rotateOrder"])
         neck_end_bind.rotateOrder.set(
             self.controls["head_CON"]["rotateOrder"])
 
-        pm.parent(neck_end_bind, w=1)
-
         pm.skinCluster(bind_joints, "neck_CRV",
                        tsb=1, mi=2, n="neck_bind_SCL")
 
-        pm.parentConstraint("neck_CON", neck_base_bind, mo=1)
-        pm.parentConstraint("head_CON", neck_end_bind, mo=1)
+        pm.matchTransform("neck_OFS", neck_base_bind, rot=1)
+        # pm.matchTransform("head_OFS", neck_end_bind, rot=1)
+        pm.parentConstraint("neck_CON", neck_base_bind)
+        # pm.parentConstraint("head_CON", neck_end_bind)
 
         # advanced spline twist settings
         neck_hdl = pm.PyNode("neck_HDL")
         neck_hdl.dTwistControlEnable.set(1)
         neck_hdl.dWorldUpType.set(4)  # object rotation up (start/end)
         neck_hdl.dWorldUpAxis.set(1)
-        neck_hdl.dWorldUpVectorY.set(-1)
-        neck_hdl.dWorldUpVectorEndY.set(1)
+        neck_hdl.dWorldUpVectorY.set(0)
+        neck_hdl.dWorldUpVectorZ.set(-1)
+        neck_hdl.dWorldUpVectorEndY.set(0)
         neck_hdl.dWorldUpVectorEndZ.set(-1)
 
         neck_base_bind.worldMatrix[0] >> neck_hdl.dWorldUpMatrix
@@ -168,7 +172,7 @@ class Rig:
         connection_nodes = [
             const_loc,
             pm.parentConstraint(const_loc, "neck_OFS"),
-            pm.parentConstraint(const_loc, "neck_base_bind_JNT")]
+            pm.parentConstraint(const_loc, "neck_base_bind_JNT", mo=1)]
 
         pm.parent(const_loc, control)
         const_loc.hide()
@@ -274,5 +278,8 @@ class Rig:
         # lock and hide translate/scale - neck control
         map(lambda x: pm.setAttr(("neck_CON.t" + x), lock=1, keyable=0), "xyz")
         map(lambda x: pm.setAttr(("neck_CON.s" + x), lock=1, keyable=0), "xyz")
+
+        # hide all space locators
+        pm.hide(pm.ls("head*_space_LOC"))
         return True
 
