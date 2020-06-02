@@ -82,14 +82,6 @@ class HeadNeckTest(unittest.TestCase):
                         "did not set up guts")
 
     @unittest.skip("")
-    def test_connect(self):
-        self.neck.ik_spline()
-        self.neck.setup_controls()
-        self.neck.guts()
-        self.assertTrue(self.neck.connect("chest_CON"),
-                        "did not connect neck to chest")
-
-    @unittest.skip("")
     def test_space_switch(self):
         self.neck.ik_spline()
         self.neck.setup_controls()
@@ -100,15 +92,8 @@ class HeadNeckTest(unittest.TestCase):
         self.assertTrue(self.neck.space_switch(controls),
                         "did not apply space switch to head")
 
-    @unittest.skip("")
-    def test_clean_up_without_space_switch(self):
-        self.neck.ik_spline()
-        self.neck.setup_controls()
-        self.neck.guts()
-        self.assertTrue(self.neck.clean_up(),
-                        "did not clean up")
-
-    def test_clean_up_with_space_switch(self):
+    # @unittest.skip("")
+    def test_clean_up(self):
         self.neck.ik_spline()
         self.neck.setup_controls()
         self.neck.guts()
@@ -121,6 +106,9 @@ class HeadNeckTest(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
+        pm.hide("neck_CRV", "neck_HDL", "neck_base_bind_JNT",
+                "neck_end_bind_JNT")
+        pm.showHidden("head_neck_GRP|dontTouch_GRP")
         pm.system.saveAs("result.ma", type="mayaAscii")
         print "\n>>>>>", pm.system.sceneName()
 

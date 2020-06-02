@@ -67,7 +67,7 @@
         <number>20</number>
        </property>
        <property name="sliderPosition">
-        <number>3</number>
+        <number>4</number>
        </property>
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
@@ -101,7 +101,7 @@
         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
        </property>
        <property name="placeholderText">
-        <string>3</string>
+        <string>4</string>
        </property>
       </widget>
      </item>

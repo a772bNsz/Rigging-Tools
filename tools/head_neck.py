@@ -171,8 +171,7 @@ class Rig:
 
         connection_nodes = [
             const_loc,
-            pm.parentConstraint(const_loc, "neck_OFS"),
-            pm.parentConstraint(const_loc, "neck_base_bind_JNT", mo=1)]
+            pm.parentConstraint(const_loc, "neck_OFS")]
 
         pm.parent(const_loc, control)
         const_loc.hide()
@@ -201,8 +200,7 @@ class Rig:
             # key all weights to 0
             map(lambda x:
                 pm.setDrivenKeyframe(
-                    ori_const,
-                    at=x,
+                    x,
                     cd="head_CON.rotationSpace",
                     dv=rotation_space_values.index(dv),
                     v=0,
@@ -215,8 +213,7 @@ class Rig:
                 st="head{}_space_LOC*".format(dv.capitalize()))[0]
 
             pm.setDrivenKeyframe(
-                ori_const,
-                at=weight,
+                weight,
                 currentDriver="head_CON.rotationSpace",
                 driverValue=rotation_space_values.index(dv),
                 value=1,
@@ -232,8 +229,7 @@ class Rig:
             # key all weights to 0
             map(lambda x:
                 pm.setDrivenKeyframe(
-                    pt_const,
-                    at=x,
+                    x,
                     cd="head_CON.translationSpace",
                     dv=translation_space_value.index(dv),
                     v=0,
@@ -246,8 +242,7 @@ class Rig:
                 st="head{}_space_LOC*".format(dv.capitalize()))[0]
 
             pm.setDrivenKeyframe(
-                pt_const,
-                at=weight,
+                weight,
                 currentDriver="head_CON.translationSpace",
                 driverValue=translation_space_value.index(dv),
                 value=1,
