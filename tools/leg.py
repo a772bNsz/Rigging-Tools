@@ -66,11 +66,11 @@ class Rig:
 
         foot_ik = pm.spaceLocator(n=side+"Foot_CON")
         foot_ik.rotateOrder.set(2)
-        pm.matchTransform(foot_ik, ik_chain["foot"])
+        pm.matchTransform(foot_ik, ik_chain["foot"], pos=1)
         controls["foot_ik"] = foot_ik
 
         knee_ik = pm.spaceLocator(n=side+"Knee_CON")
-        pm.matchTransform(knee_ik, ik_chain["shin"])
+        pm.matchTransform(knee_ik, ik_chain["shin"], pos=1)
         knee_ik.tz.set(knee_ik.tz.get() + 10)
         controls["knee_ik"] = knee_ik
 
@@ -161,7 +161,7 @@ class Rig:
         pm.setDrivenKeyframe(driven, cd=driver, dv=0, v=0)
         return controls
 
-    def ik_leg(self, dual_knee=0):
+    def ik_leg(self):
         ik_chain = self.ik_chain
         side = self.side
         foot_control = self.controls["foot_ik"]
@@ -249,16 +249,26 @@ class Rig:
         )
         pm.setInfinity(ik_chain["toe"].tx, poi="linear")
 
-        if dual_knee:
-            self._no_flip_knee()
-            self._pv_knee()
-        return
+        # DUAL KNEE SET UP
+        knee_control = self.controls["knee_ik"]
+        knee_loc = pm.spaceLocator(n=side+"Knee_LOC")
+        pm.matchTransform(knee_loc, knee_control)
+        pm.poleVectorConstraint(knee_loc, leg_hdl)
 
-    def _no_flip_knee(self):
-        return
+        pm.matchTransform(knee_loc, foot_control)
+        knee_loc.tx.set(knee_loc.tx.get() + 10)
+        leg_hdl.twist.set(90)
 
-    def _pv_knee(self):
-        return
+        no_flip_group, = pm.duplicate(foot_control, po=1, n=side+"NoFlip_GRP")
+        pm.parent(no_flip_group, foot_control)
+        pm.parent(knee_loc, no_flip_group)
+
+        pm.addAttr(foot_control, ln="kneeTwist", at="float", k=1)
+        foot_control.kneeTwist >> no_flip_group.ry
+
+        # --- no flip knee
+
+        return True
 
     def cleanup(self):
         # fk controls - lock and hide everything except rotate

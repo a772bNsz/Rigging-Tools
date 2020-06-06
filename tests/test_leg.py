@@ -66,12 +66,13 @@ class TestLeg(unittest.TestCase):
         self.assertEqual(fk_toe_position, result_toe_position,
                          "fk leg was not made")
 
-    def test_ik_leg_without_dual_knee(self):
+    def test_ik_leg(self):
         leg = self.leg
         leg.ikfk_switch()
         self.leg.fk_leg()
         leg.controls["leg_settings"].FK_IK_blend.set(1)
-        leg.ik_leg(dual_knee=0)
+        self.assertTrue(self.leg.ik_leg(),
+                        "ik leg was not made")
 
     @classmethod
     def tearDownClass(cls):
