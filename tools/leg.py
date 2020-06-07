@@ -267,7 +267,29 @@ class Rig:
         foot_control.kneeTwist >> no_flip_group.ry
 
         # --- no flip knee
+        foot_ofs = foot_control.getParent()
+        ik_control_nodes = [foot_ofs] + foot_ofs.getChildren(ad=1)
 
+        ik_thigh_jnt = ik_chain["thigh"]
+        ik_chain_nodes = [ik_thigh_jnt] + ik_thigh_jnt.getChildren(ad=1)
+
+        ik_setup = \
+            ik_chain_nodes + ik_control_nodes + \
+            [leg_length.getParent(), leg_start_loc]
+        no_flip_nodes = pm.duplicate(ik_setup, rr=1, un=1)
+
+        pm.delete(leg_length.getParent(), leg_start_loc, leg_end_loc,
+                  leg_hdl, no_flip_group)
+
+        for n in no_flip_nodes:
+            n1, n2 = n.rsplit("|", 1)[-1].split("_", 1)
+
+            if "Flip" in n1 or "Flip" in n2:
+                continue
+
+            n2 = n2[:-1] if n2.endswith("1") else n2
+            name = n1 + "_noFlip_" + n2
+            n.rename(name)
         return True
 
     def cleanup(self):
