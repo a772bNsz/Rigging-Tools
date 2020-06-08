@@ -33,46 +33,44 @@ class TestLeg(unittest.TestCase):
         self.assertTrue(knee_position,
                         "knee control not where expected")
 
-    @unittest.skip("")
     def test_ikfk_switch(self):
-        self.leg.ikfk_switch()
-
-        self.leg.ik_chain["thigh"].ry.set(45)
-        ik_toe_position = \
-            self.leg.ik_chain["toe"].getTranslation(space="world")
-        self.leg.controls["leg_settings"].FK_IK_blend.set(1)
-        result_toe_position = \
-            self.leg.result_chain["toe"].getTranslation(space="world")
-
-        self.assertEqual(ik_toe_position, result_toe_position,
-                         "FK/IK Blend not working")
+        leg = self.leg
+        blend_nodes = leg.ikfk_switch()
+        leg.fk_leg()
+        leg.ik_leg()
+        self.assertTrue(blend_nodes,
+                        "did not create IK/FK switch")
 
     @unittest.skip("")
     def test_fk_leg(self):
-        self.leg.ikfk_switch()
-        self.leg.fk_leg()
+        leg = self.leg
+        self.assertTrue(leg.fk_leg(),
+                        "did not create fk leg")
 
-        controls = self.leg.controls
-        fk_chain = self.leg.fk_chain
-        result_chain = self.leg.result_chain
+    @unittest.skip("")
+    def test_no_flip_knee(self):
+        leg = self.leg
+        self.assertTrue(leg._dual_knee("noFlip"),
+                        "did not create no flip knee")
 
-        controls["thigh_fk"].length.set(2)
-        controls["shin_fk"].ry.set(35)
-        controls["shin_fk"].length.set(1.75)
+    @unittest.skip("")
+    def test_pv_knee(self):
+        leg = self.leg
+        self.assertTrue(leg._dual_knee("pv"),
+                        "did not create pole vector knee")
 
-        fk_toe_position = fk_chain["toe"].getTranslation(space="world")
-        result_toe_position = result_chain["toe"].getTranslation(space="world")
+    @unittest.skip("")
+    def test_dual_knee_switch(self):
+        leg = self.leg
+        no_flip_chain = leg._dual_knee("noFlip")
+        pv_chain = leg._dual_knee("pv")
+        self.assertTrue(leg._dual_knee_switch(no_flip_chain, pv_chain),
+                        "did not create dual knee switch")
 
-        self.assertEqual(fk_toe_position, result_toe_position,
-                         "fk leg was not made")
-
+    @unittest.skip("")
     def test_ik_leg(self):
         leg = self.leg
-        leg.ikfk_switch()
-        self.leg.fk_leg()
-        leg.controls["leg_settings"].FK_IK_blend.set(1)
-        self.assertTrue(self.leg.ik_leg(),
-                        "ik leg was not made")
+        self.assertTrue(leg.ik_leg(), "ik leg was not made")
 
     @classmethod
     def tearDownClass(cls):

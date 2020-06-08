@@ -93,13 +93,8 @@ class Rig:
         names = ["thigh", "shin", "foot", "ball", "toe"]
         side = self.side
 
-        pm.addAttr(leg_settings,
-                   longName="FK_IK_blend",
-                   niceName="FK/IK Blend",
-                   attributeType="float",
-                   keyable=1,
-                   minValue=0,
-                   maxValue=1)
+        pm.addAttr(leg_settings, ln="FK_IK_blend", nn="FK/IK Blend",
+                   at="float", k=1, min=0, max=1)
 
         nodes = []
         for n in names:
@@ -117,7 +112,37 @@ class Rig:
             leg_settings.FK_IK_blend >> pair_blend.weight
             nodes += [pair_blend]
 
-        #TODO: blend between IK/FK controls and chain
+        pm.addAttr(leg_settings, ln="IK_visibility", at="bool", k=0, h=1)
+        pm.addAttr(leg_settings, ln="FK_visibility", at="bool", k=0, h=1)
+        pm.addAttr(leg_settings, ln="knee_visibility", at="bool", k=0, h=1)
+
+        leg_settings.FK_visibility >> self.controls["thigh_fk"].getParent().v
+        leg_settings.IK_visibility >> self.controls["foot_ik"].getParent().v
+        leg_settings.knee_visibility >> self.controls["knee_ik"].v
+
+        pm.setDrivenKeyframe(leg_settings.FK_visibility,
+                             cd=leg_settings.FK_IK_blend, dv=0, v=1)
+        pm.setDrivenKeyframe(leg_settings.FK_visibility,
+                             cd=leg_settings.FK_IK_blend, dv=0.999, v=1,
+                             itt="linear", ott="linear")
+        pm.setDrivenKeyframe(leg_settings.FK_visibility,
+                             cd=leg_settings.FK_IK_blend, dv=1, v=0)
+
+        pm.setDrivenKeyframe(leg_settings.IK_visibility,
+                             cd=leg_settings.FK_IK_blend, dv=0, v=0)
+        pm.setDrivenKeyframe(leg_settings.IK_visibility,
+                             cd=leg_settings.FK_IK_blend, dv=0.001, v=1,
+                             itt="linear", ott="linear")
+        pm.setDrivenKeyframe(leg_settings.IK_visibility,
+                             cd=leg_settings.FK_IK_blend, dv=1, v=1)
+
+        pm.setDrivenKeyframe(self.controls["knee_ik"].getParent().v,
+                             cd=leg_settings.FK_IK_blend, dv=0, v=0)
+        pm.setDrivenKeyframe(self.controls["knee_ik"].getParent().v,
+                             cd=leg_settings.FK_IK_blend, dv=0.001, v=1,
+                             itt="linear", ott="linear")
+        pm.setDrivenKeyframe(self.controls["knee_ik"].getParent().v,
+                             cd=leg_settings.FK_IK_blend, dv=1, v=1)
         return nodes
 
     def fk_leg(self):
@@ -128,13 +153,11 @@ class Rig:
             pm.parent(ofs, con)
             ofs = con.getParent()
 
-        controls = []
         for v in self.controls.values():
             if "FK" not in str(v):
                 continue
             fk_jnt = v.replace("CON", "JNT")
             pm.parentConstraint(v, fk_jnt)
-            controls += [v]
 
         # SDK setup
         thigh_fk_con = self.controls["thigh_fk"]
@@ -144,7 +167,7 @@ class Rig:
         pm.addAttr(thigh_fk_con, ln="length", at="float", k=1, min=0, dv=1)
         pm.addAttr(shin_fk_con, ln="length", at="float", k=1, min=0, dv=1)
 
-        # SDK - thigh >> shin
+        # --- SDK - thigh >> shin
         driven = shin_fk_con.getParent().tx
         driver = thigh_fk_con.length
 
@@ -152,20 +175,29 @@ class Rig:
         pm.setInfinity(driven, poi="linear")
         pm.setDrivenKeyframe(driven, cd=driver, dv=0, v=0)
 
-        # SDK - shin >> foot
+        # --- SDK - shin >> foot
         driven = foot_fk_con.getParent().tx
         driver = shin_fk_con.length
 
         pm.setDrivenKeyframe(driven, cd=driver)
         pm.setInfinity(driven, poi="linear")
         pm.setDrivenKeyframe(driven, cd=driver, dv=0, v=0)
+
+        # Controls
+        controls = {
+            "thigh": thigh_fk_con,
+            "shin": shin_fk_con,
+            "foot": foot_fk_con
+        }
         return controls
 
     def ik_leg(self):
+        # Dual Knee
         no_flip_chain = self._dual_knee("noFlip")
         pv_chain = self._dual_knee("pv")
         self._dual_knee_switch(no_flip_chain, pv_chain)
 
+        # IK Foot Handles on IK Chain
         ik_chain = self.ik_chain
         side = self.side
         foot_control = self.controls["foot_ik"]
@@ -181,7 +213,13 @@ class Rig:
         toe_hdl.rename(side+"Toe_HDL")
         toe_eff.rename(side+"Toe_EFF")
         pm.parent(toe_hdl, foot_control)
-        return True
+
+        # Controls
+        controls = {
+            "foot": foot_control,
+            "knee": self.controls["knee_ik"]
+        }
+        return controls
 
     def _dual_knee(self, knee_type):
         side = self.side
@@ -276,6 +314,26 @@ class Rig:
             pm.addAttr(foot_control, ln="kneeTwist", at="float", k=1)
             foot_control.kneeTwist >> no_flip_group.ry
 
+            # Non-uniform IK Leg Stretch
+            pm.addAttr(foot_control,
+                       ln="autoKneeThighLength", at="float", k=1, min=0, dv=1)
+            pm.addAttr(foot_control,
+                       ln="autoKneeShinLength", at="float", k=1, min=0, dv=1)
+
+            shin_sdk = dup_ik_chain["shin"].tx.inputs()[0]
+            foot_sdk = dup_ik_chain["foot"].tx.inputs()[0]
+
+            knee_stretch = \
+                pm.createNode("multiplyDivide", n=side+"Knee_noFlipScale_MULT")
+
+            foot_control.autoKneeThighLength >> knee_stretch.input1X
+            shin_sdk.output >> knee_stretch.input2X
+            knee_stretch.outputX >> dup_ik_chain["shin"].tx
+
+            foot_control.autoKneeShinLength >> knee_stretch.input1Y
+            foot_sdk.output >> knee_stretch.input2Y
+            knee_stretch.outputY >> dup_ik_chain["foot"].tx
+
         if "pv" is knee_type:
             pm.parent(knee_loc, knee_control)
             
@@ -346,6 +404,14 @@ class Rig:
 
             leg_settings.autoManualKneeBlend >> pair_blend.weight
             nodes += [pair_blend]
+
+        pm.setDrivenKeyframe(leg_settings.knee_visibility,
+                             cd=leg_settings.autoManualKneeBlend, dv=0, v=0)
+        pm.setDrivenKeyframe(leg_settings.knee_visibility,
+                             cd=leg_settings.autoManualKneeBlend, dv=0.001, v=1,
+                             itt="linear", ott="linear")
+        pm.setDrivenKeyframe(leg_settings.knee_visibility,
+                             cd=leg_settings.autoManualKneeBlend, dv=1, v=1)
         return nodes
     
     def cleanup(self):
