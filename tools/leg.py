@@ -222,11 +222,30 @@ class Rig:
         return controls
 
     def _dual_knee(self, knee_type):
+        # Basic IK Leg
+        dup_ik_chain = self._basic_ik_leg(knee_type)
+        leg_hdl = dup_ik_chain["thigh"].outputs(type="ikHandle")[0]
+
+        # IK Stretch and Bend
+        self._ik_stretch(knee_type, dup_ik_chain)
+
+        # Automatic or Manual Knee >> _noflip_knee() or _pv_knee()
+        knee_control = self.controls["knee_ik"]
         side = self.side
+        knee_loc = pm.spaceLocator(n="{}Knee_{}_LOC".format(side, knee_type))
+        pm.matchTransform(knee_loc, knee_control)
+        pm.poleVectorConstraint(knee_loc, leg_hdl)
+
+        knee_method = "_{}_knee".format(knee_type.lower())
+        getattr(self, knee_method)(knee_loc, dup_ik_chain)
+        return dup_ik_chain
+
+    def _basic_ik_leg(self, knee_type):
         foot_control = self.controls["foot_ik"]
+        side = self.side
 
         # Duplicate IK Chain
-        dup_ik_chain = {}
+        ik_chain = {}
         dup_chain = pm.duplicate(self.ik_chain["thigh"])
         dup_chain += dup_chain[0].getChildren(ad=1)[::-1]
         pm.delete(dup_chain.pop(), dup_chain.pop())
@@ -234,25 +253,30 @@ class Rig:
             n = jnt.replace("IK", knee_type+"_IK")
             n = n[:-1] if jnt.endswith("1") else n
             jnt.rename(n)
-            dup_ik_chain[k] = jnt
+            ik_chain[k] = jnt
 
         # IK Handles
         leg_hdl, leg_eff = pm.ikHandle(
-            sj=dup_ik_chain["thigh"],
-            ee=dup_ik_chain["foot"],
+            sj=ik_chain["thigh"],
+            ee=ik_chain["foot"],
             sol="ikRPsolver")
         leg_hdl.rename("{}Leg_{}_HDL".format(side, knee_type))
         leg_eff.rename("{}Leg_{}_EFF".format(side, knee_type))
         pm.parent(leg_hdl, foot_control)
-
+        return ik_chain
+    
+    def _ik_stretch(self, knee_type, ik_chain):
         # SDK for Leg Stretch and Bend
+        foot_control = self.controls["foot_ik"]
+        side = self.side
+        
         leg_start_loc = pm.spaceLocator(
             n="{}Leg_{}_IK_lengthStart_LOC".format(side, knee_type))
         leg_end_loc = pm.spaceLocator(
             n="{}Leg_{}_IK_lengthEnd_LOC".format(side, knee_type))
 
-        pm.matchTransform(leg_start_loc, dup_ik_chain["thigh"], pos=1)
-        pm.matchTransform(leg_end_loc, dup_ik_chain["foot"], pos=1)
+        pm.matchTransform(leg_start_loc, ik_chain["thigh"], pos=1)
+        pm.matchTransform(leg_end_loc, ik_chain["foot"], pos=1)
 
         leg_length = pm.distanceDimension(
             sp=leg_start_loc.worldPosition.get(),
@@ -262,117 +286,121 @@ class Rig:
         pm.parent(leg_end_loc, foot_control)
 
         # --- SDK for thigh
-        thigh_length = dup_ik_chain["shin"].tx.get()
-        shin_length = dup_ik_chain["foot"].tx.get()
+        thigh_length = ik_chain["shin"].tx.get()
+        shin_length = ik_chain["foot"].tx.get()
         sum_length = thigh_length + shin_length
         pm.setDrivenKeyframe(
-            dup_ik_chain["shin"].tx,
+            ik_chain["shin"].tx,
             cd=leg_length.distance,
             dv=sum_length,
             v=thigh_length
         )
         pm.setDrivenKeyframe(
-            dup_ik_chain["shin"].tx,
+            ik_chain["shin"].tx,
             cd=leg_length.distance,
             dv=sum_length*2,
             v=thigh_length*2
         )
-        pm.setInfinity(dup_ik_chain["shin"].tx, poi="linear")
+        pm.setInfinity(ik_chain["shin"].tx, poi="linear")
 
         # --- SDK for shin
-        shin_length = dup_ik_chain["foot"].tx.get()
+        shin_length = ik_chain["foot"].tx.get()
         pm.setDrivenKeyframe(
-            dup_ik_chain["foot"].tx,
+            ik_chain["foot"].tx,
             cd=leg_length.distance,
             dv=sum_length,
             v=shin_length
         )
         pm.setDrivenKeyframe(
-            dup_ik_chain["foot"].tx,
+            ik_chain["foot"].tx,
             cd=leg_length.distance,
             dv=sum_length*2,
             v=shin_length*2
         )
-        pm.setInfinity(dup_ik_chain["foot"].tx, poi="linear")
+        pm.setInfinity(ik_chain["foot"].tx, poi="linear")
+        return
+    
+    def _noflip_knee(self, knee_loc, ik_chain):
+        foot_control = self.controls["foot_ik"]
+        side = self.side
+        leg_hdl = ik_chain["thigh"].outputs(type="ikHandle")[0]
 
-        # Dual Knee Setup
+        pm.matchTransform(knee_loc, foot_control)
+        knee_loc.tx.set(knee_loc.tx.get() + 10)
+        leg_hdl.twist.set(90)
+
+        no_flip_group, = pm.duplicate(
+            foot_control, po=1, n=side+"NoFlip_GRP")
+        pm.parent(no_flip_group, foot_control)
+        pm.parent(knee_loc, no_flip_group)
+
+        pm.addAttr(foot_control, ln="kneeTwist", at="float", k=1)
+        foot_control.kneeTwist >> no_flip_group.ry
+
+        # Non-uniform IK Leg Stretch
+        pm.addAttr(foot_control,
+                   ln="autoKneeThighLength", at="float", k=1, min=0, dv=1)
+        pm.addAttr(foot_control,
+                   ln="autoKneeShinLength", at="float", k=1, min=0, dv=1)
+
+        shin_sdk = ik_chain["shin"].tx.inputs()[0]
+        foot_sdk = ik_chain["foot"].tx.inputs()[0]
+
+        knee_stretch = \
+            pm.createNode("multiplyDivide", n=side+"Knee_noFlipScale_MULT")
+
+        foot_control.autoKneeThighLength >> knee_stretch.input1X
+        shin_sdk.output >> knee_stretch.input2X
+        knee_stretch.outputX >> ik_chain["shin"].tx
+
+        foot_control.autoKneeShinLength >> knee_stretch.input1Y
+        foot_sdk.output >> knee_stretch.input2Y
+        knee_stretch.outputY >> ik_chain["foot"].tx
+        return
+    
+    def _pv_knee(self, knee_loc, ik_chain):
         knee_control = self.controls["knee_ik"]
-        knee_loc = pm.spaceLocator(n="{}Knee_{}_LOC".format(side, knee_type))
-        pm.matchTransform(knee_loc, knee_control)
-        pm.poleVectorConstraint(knee_loc, leg_hdl)
+        foot_control = self.controls["foot_ik"]
+        side = self.side
+        
+        pm.parent(knee_loc, knee_control)
 
-        if "noFlip" is knee_type:
-            pm.matchTransform(knee_loc, foot_control)
-            knee_loc.tx.set(knee_loc.tx.get() + 10)
-            leg_hdl.twist.set(90)
+        # Snappable Knee
+        thigh_loc = pm.spaceLocator(n=side+"Thigh_to_kneeDist_LOC")
+        foot_loc = pm.spaceLocator(n=side+"Knee_to_footDist_LOC")
 
-            no_flip_group, = pm.duplicate(
-                foot_control, po=1, n=side+"NoFlip_GRP")
-            pm.parent(no_flip_group, foot_control)
-            pm.parent(knee_loc, no_flip_group)
+        pm.matchTransform(thigh_loc, ik_chain["thigh"], pos=1)
+        pm.matchTransform(foot_loc, ik_chain["foot"], pos=1)
+        pm.parent(foot_loc, foot_control)
 
-            pm.addAttr(foot_control, ln="kneeTwist", at="float", k=1)
-            foot_control.kneeTwist >> no_flip_group.ry
+        thigh_to_knee_length = pm.distanceDimension(
+            sp=thigh_loc.worldPosition.get(),
+            ep=knee_loc.worldPosition.get()).getParent()
+        thigh_to_knee_length.rename(side+"Thigh_to_kneeDistance")
 
-            # Non-uniform IK Leg Stretch
-            pm.addAttr(foot_control,
-                       ln="autoKneeThighLength", at="float", k=1, min=0, dv=1)
-            pm.addAttr(foot_control,
-                       ln="autoKneeShinLength", at="float", k=1, min=0, dv=1)
+        knee_to_foot_length = pm.distanceDimension(
+            sp=knee_loc.worldPosition.get(),
+            ep=foot_loc.worldPosition.get()).getParent()
+        knee_to_foot_length.rename(side+"Knee_to_footDistance")
 
-            shin_sdk = dup_ik_chain["shin"].tx.inputs()[0]
-            foot_sdk = dup_ik_chain["foot"].tx.inputs()[0]
+        shin_sdk = ik_chain["shin"].tx.inputs()[0]
+        foot_sdk = ik_chain["foot"].tx.inputs()[0]
 
-            knee_stretch = \
-                pm.createNode("multiplyDivide", n=side+"Knee_noFlipScale_MULT")
+        stretch_blend = \
+            pm.createNode("blendColors", n=side+"Knee_pv_stretchChoice")
 
-            foot_control.autoKneeThighLength >> knee_stretch.input1X
-            shin_sdk.output >> knee_stretch.input2X
-            knee_stretch.outputX >> dup_ik_chain["shin"].tx
+        thigh_to_knee_length.distance >> stretch_blend.color1R
+        shin_sdk.output >> stretch_blend.color2R
+        stretch_blend.outputR >> ik_chain["shin"].tx
 
-            foot_control.autoKneeShinLength >> knee_stretch.input1Y
-            foot_sdk.output >> knee_stretch.input2Y
-            knee_stretch.outputY >> dup_ik_chain["foot"].tx
+        knee_to_foot_length.distance >> stretch_blend.color1G
+        foot_sdk.output >> stretch_blend.color2G
+        stretch_blend.outputG >> ik_chain["foot"].tx
 
-        if "pv" is knee_type:
-            pm.parent(knee_loc, knee_control)
-            
-            # Snappable Knee
-            thigh_loc = pm.spaceLocator(n=side+"Thigh_to_kneeDist_LOC")
-            foot_loc = pm.spaceLocator(n=side+"Knee_to_footDist_LOC")
-    
-            pm.matchTransform(thigh_loc, dup_ik_chain["thigh"], pos=1)
-            pm.matchTransform(foot_loc, dup_ik_chain["foot"], pos=1)
-            pm.parent(foot_loc, foot_control)
-    
-            thigh_to_knee_length = pm.distanceDimension(
-                sp=thigh_loc.worldPosition.get(),
-                ep=knee_loc.worldPosition.get()).getParent()
-            thigh_to_knee_length.rename(side+"Thigh_to_kneeDistance")
-
-            knee_to_foot_length = pm.distanceDimension(
-                sp=knee_loc.worldPosition.get(),
-                ep=foot_loc.worldPosition.get()).getParent()
-            knee_to_foot_length.rename(side+"Knee_to_footDistance")
-
-            shin_sdk = dup_ik_chain["shin"].tx.inputs()[0]
-            foot_sdk = dup_ik_chain["foot"].tx.inputs()[0]
-
-            stretch_blend = \
-                pm.createNode("blendColors", n=side+"Knee_pv_stretchChoice")
-
-            thigh_to_knee_length.distance >> stretch_blend.color1R
-            shin_sdk.output >> stretch_blend.color2R
-            stretch_blend.outputR >> dup_ik_chain["shin"].tx
-
-            knee_to_foot_length.distance >> stretch_blend.color1G
-            foot_sdk.output >> stretch_blend.color2G
-            stretch_blend.outputG >> dup_ik_chain["foot"].tx
-
-            pm.addAttr(knee_control,
-                       ln="kneeSnap", at="float", k=1, min=0, max=1)
-            knee_control.kneeSnap >> stretch_blend.blender
-        return dup_ik_chain
+        pm.addAttr(knee_control,
+                   ln="kneeSnap", at="float", k=1, min=0, max=1)
+        knee_control.kneeSnap >> stretch_blend.blender
+        return
 
     def _dual_knee_switch(self, no_flip_chain, pv_chain):
         ik_chain = self.ik_chain
