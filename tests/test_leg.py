@@ -43,21 +43,20 @@ class TestLeg(unittest.TestCase):
                         "did not create IK/FK switch")
 
     @unittest.skip("")
-    def test_cleanup(self):
+    def test_create_groups(self):
         leg = self.leg
         leg.ikfk_switch()
         leg.fk_leg()
         leg.ik_leg()
-        self.assertTrue(leg.cleanup(),
+        self.assertTrue(leg._create_groups(),
                         "did not clean up")
 
-    # @unittest.skip("")
+    @unittest.skip("")
     def test_space_switch(self):
         leg = self.leg
         leg.ikfk_switch()
         leg.fk_leg()
         leg.ik_leg()
-        leg.cleanup()
         controls = ["hip_CON", "body_CON", "root_transform_CON"]
         for c in controls:
             c = pm.spaceLocator(n=c)
@@ -94,6 +93,20 @@ class TestLeg(unittest.TestCase):
     def test_ik_leg(self):
         leg = self.leg
         self.assertTrue(leg.ik_leg(), "ik leg was not made")
+
+    # @unittest.skip("")
+    def test_cleanup(self):
+        leg = self.leg
+        leg.ikfk_switch()
+        leg.fk_leg()
+        leg.ik_leg()
+        controls = ["hip_CON", "body_CON", "root_transform_CON"]
+        for c in controls:
+            c = pm.spaceLocator(n=c)
+        leg.space_switch(controls)
+
+        self.assertTrue(leg.clean_up(root_control="root_transform_CON"),
+                        "did not clean up leg rig")
 
     @classmethod
     def tearDownClass(cls):

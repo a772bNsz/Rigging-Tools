@@ -11,6 +11,9 @@ class Rig:
         self.controls = self._controls(
             side, self.result_chain, self.ik_chain, self.fk_chain)
 
+        self._groups = None  # leg_GRP, const groups, dontTouch
+        self._spaces = None  # hip, body, and root space locators
+
     @staticmethod
     def _joint_chains(root, side):
         result_chain = [root] + root.getChildren(ad=1)[::-1]
@@ -40,36 +43,36 @@ class Rig:
 
     @staticmethod
     def _controls(side, result_chain, ik_chain, fk_chain):
-        leg_settings = pm.spaceLocator(n=side+"Leg_settings_CON")
+        leg_settings = pm.spaceLocator(n=side + "Leg_settings_CON")
         pm.parentConstraint(result_chain["foot"], leg_settings)
         controls = {"leg_settings": leg_settings}
 
-        thigh_fk = pm.spaceLocator(n=side+"Thigh_FK_CON")
+        thigh_fk = pm.spaceLocator(n=side + "Thigh_FK_CON")
         thigh_fk.rotateOrder.set(3)  # xzy
         pm.matchTransform(thigh_fk, fk_chain["thigh"])
         controls["thigh_fk"] = thigh_fk
 
-        shin_fk = pm.spaceLocator(n=side+"Shin_FK_CON")
+        shin_fk = pm.spaceLocator(n=side + "Shin_FK_CON")
         shin_fk.rotateOrder.set(3)
         pm.matchTransform(shin_fk, fk_chain["shin"])
         controls["shin_fk"] = shin_fk
 
-        foot_fk = pm.spaceLocator(n=side+"Foot_FK_CON")
+        foot_fk = pm.spaceLocator(n=side + "Foot_FK_CON")
         foot_fk.rotateOrder.set(3)
         pm.matchTransform(foot_fk, fk_chain["foot"])
         controls["foot_fk"] = foot_fk
 
-        ball_fk = pm.spaceLocator(n=side+"Ball_FK_CON")
+        ball_fk = pm.spaceLocator(n=side + "Ball_FK_CON")
         ball_fk.rotateOrder.set(3)
         pm.matchTransform(ball_fk, fk_chain["ball"])
         controls["ball_fk"] = ball_fk
 
-        foot_ik = pm.spaceLocator(n=side+"Foot_CON")
+        foot_ik = pm.spaceLocator(n=side + "Foot_CON")
         foot_ik.rotateOrder.set(2)
         pm.matchTransform(foot_ik, ik_chain["foot"], pos=1)
         controls["foot_ik"] = foot_ik
 
-        knee_ik = pm.spaceLocator(n=side+"Knee_CON")
+        knee_ik = pm.spaceLocator(n=side + "Knee_CON")
         pm.matchTransform(knee_ik, ik_chain["shin"], pos=1)
         knee_ik.tz.set(knee_ik.tz.get() + 10)
         controls["knee_ik"] = knee_ik
@@ -149,7 +152,7 @@ class Rig:
         names = ["thigh", "shin", "foot"][::-1]
         ofs = self.controls["ball_fk"].getParent()
         for n in names:
-            con = self.controls[n+"_fk"]
+            con = self.controls[n + "_fk"]
             pm.parent(ofs, con)
             ofs = con.getParent()
 
@@ -204,14 +207,14 @@ class Rig:
 
         ball_hdl, ball_eff = pm.ikHandle(
             sj=ik_chain["foot"], ee=ik_chain["ball"], sol="ikRPsolver")
-        ball_hdl.rename(side+"Ball_HDL")
-        ball_eff.rename(side+"Ball_EFF")
+        ball_hdl.rename(side + "Ball_HDL")
+        ball_eff.rename(side + "Ball_EFF")
         pm.parent(ball_hdl, foot_control)
 
         toe_hdl, toe_eff = pm.ikHandle(
             sj=ik_chain["ball"], ee=ik_chain["toe"], sol="ikRPsolver")
-        toe_hdl.rename(side+"Toe_HDL")
-        toe_eff.rename(side+"Toe_EFF")
+        toe_hdl.rename(side + "Toe_HDL")
+        toe_eff.rename(side + "Toe_EFF")
         pm.parent(toe_hdl, foot_control)
 
         # Controls
@@ -250,7 +253,7 @@ class Rig:
         dup_chain += dup_chain[0].getChildren(ad=1)[::-1]
         pm.delete(dup_chain.pop(), dup_chain.pop())
         for k, jnt in zip(["thigh", "shin", "foot"], dup_chain):
-            n = jnt.replace("IK", knee_type+"_IK")
+            n = jnt.replace("IK", knee_type + "_IK")
             n = n[:-1] if jnt.endswith("1") else n
             jnt.rename(n)
             ik_chain[k] = jnt
@@ -264,12 +267,12 @@ class Rig:
         leg_eff.rename("{}Leg_{}_EFF".format(side, knee_type))
         pm.parent(leg_hdl, foot_control)
         return ik_chain
-    
+
     def _ik_stretch(self, knee_type, ik_chain):
         # SDK for Leg Stretch and Bend
         foot_control = self.controls["foot_ik"]
         side = self.side
-        
+
         leg_start_loc = pm.spaceLocator(
             n="{}Leg_{}_IK_lengthStart_LOC".format(side, knee_type))
         leg_end_loc = pm.spaceLocator(
@@ -298,8 +301,8 @@ class Rig:
         pm.setDrivenKeyframe(
             ik_chain["shin"].tx,
             cd=leg_length.distance,
-            dv=sum_length*2,
-            v=thigh_length*2
+            dv=sum_length * 2,
+            v=thigh_length * 2
         )
         pm.setInfinity(ik_chain["shin"].tx, poi="linear")
 
@@ -314,12 +317,12 @@ class Rig:
         pm.setDrivenKeyframe(
             ik_chain["foot"].tx,
             cd=leg_length.distance,
-            dv=sum_length*2,
-            v=shin_length*2
+            dv=sum_length * 2,
+            v=shin_length * 2
         )
         pm.setInfinity(ik_chain["foot"].tx, poi="linear")
         return
-    
+
     def _noflip_knee(self, knee_loc, ik_chain):
         foot_control = self.controls["foot_ik"]
         side = self.side
@@ -330,7 +333,7 @@ class Rig:
         leg_hdl.twist.set(90)
 
         no_flip_group, = pm.duplicate(
-            foot_control, po=1, n=side+"NoFlip_GRP")
+            foot_control, po=1, n=side + "NoFlip_GRP")
         pm.parent(no_flip_group, foot_control)
         pm.parent(knee_loc, no_flip_group)
 
@@ -347,7 +350,7 @@ class Rig:
         foot_sdk = ik_chain["foot"].tx.inputs()[0]
 
         knee_stretch = \
-            pm.createNode("multiplyDivide", n=side+"Knee_noFlipScale_MULT")
+            pm.createNode("multiplyDivide", n=side + "Knee_noFlipScale_MULT")
 
         foot_control.autoKneeThighLength >> knee_stretch.input1X
         shin_sdk.output >> knee_stretch.input2X
@@ -357,17 +360,17 @@ class Rig:
         foot_sdk.output >> knee_stretch.input2Y
         knee_stretch.outputY >> ik_chain["foot"].tx
         return
-    
+
     def _pv_knee(self, knee_loc, ik_chain):
         knee_control = self.controls["knee_ik"]
         foot_control = self.controls["foot_ik"]
         side = self.side
-        
+
         pm.parent(knee_loc, knee_control)
 
         # Snappable Knee
-        thigh_loc = pm.spaceLocator(n=side+"Thigh_to_kneeDist_LOC")
-        foot_loc = pm.spaceLocator(n=side+"Knee_to_footDist_LOC")
+        thigh_loc = pm.spaceLocator(n=side + "Thigh_to_kneeDist_LOC")
+        foot_loc = pm.spaceLocator(n=side + "Knee_to_footDist_LOC")
 
         pm.matchTransform(thigh_loc, ik_chain["thigh"], pos=1)
         pm.matchTransform(foot_loc, ik_chain["foot"], pos=1)
@@ -376,18 +379,18 @@ class Rig:
         thigh_to_knee_length = pm.distanceDimension(
             sp=thigh_loc.worldPosition.get(),
             ep=knee_loc.worldPosition.get()).getParent()
-        thigh_to_knee_length.rename(side+"Thigh_to_kneeDistance")
+        thigh_to_knee_length.rename(side + "Thigh_to_kneeDistance")
 
         knee_to_foot_length = pm.distanceDimension(
             sp=knee_loc.worldPosition.get(),
             ep=foot_loc.worldPosition.get()).getParent()
-        knee_to_foot_length.rename(side+"Knee_to_footDistance")
+        knee_to_foot_length.rename(side + "Knee_to_footDistance")
 
         shin_sdk = ik_chain["shin"].tx.inputs()[0]
         foot_sdk = ik_chain["foot"].tx.inputs()[0]
 
         stretch_blend = \
-            pm.createNode("blendColors", n=side+"Knee_pv_stretchChoice")
+            pm.createNode("blendColors", n=side + "Knee_pv_stretchChoice")
 
         thigh_to_knee_length.distance >> stretch_blend.color1R
         shin_sdk.output >> stretch_blend.color2R
@@ -436,12 +439,12 @@ class Rig:
         pm.setDrivenKeyframe(leg_settings.knee_visibility,
                              cd=leg_settings.autoManualKneeBlend, dv=0, v=0)
         pm.setDrivenKeyframe(leg_settings.knee_visibility,
-                             cd=leg_settings.autoManualKneeBlend, dv=0.001, v=1,
-                             itt="linear", ott="linear")
+                             cd=leg_settings.autoManualKneeBlend, dv=0.001,
+                             v=1, itt="linear", ott="linear")
         pm.setDrivenKeyframe(leg_settings.knee_visibility,
                              cd=leg_settings.autoManualKneeBlend, dv=1, v=1)
         return nodes
-    
+
     def _create_groups(self):
         side = self.side
         thigh_pivot = self.result_chain["thigh"].getTranslation(ws=1)
@@ -455,11 +458,11 @@ class Rig:
             groups[k] = grp
 
         groups["dontTouch"] = pm.group(em=1, n="dontTouch_GRP")
-        groups["leg"] = pm.group(n=side+"Leg_GRP")
+        groups["leg"] = pm.group(n=side + "Leg_GRP")
 
         pm.parent(self.result_chain["thigh"],
                   groups["result"])
-        pm.parent(pm.ls(side+"*IK*JNT", side+"*_LOC", assemblies=1),
+        pm.parent(pm.ls(side + "*IK*JNT", side + "*_LOC", assemblies=1),
                   groups["ik"])
         pm.parent(self.controls["thigh_fk"].getParent(),
                   groups["fk"])
@@ -469,8 +472,9 @@ class Rig:
         pm.parent(self.controls["knee_ik"].getParent(), groups["leg"])
 
         for search in ["length", "Distance", "JNT", "Const_GRP"]:
-            pm.parent(pm.ls(side+"*"+search, assemblies=1),
+            pm.parent(pm.ls(side + "*" + search, assemblies=1),
                       groups["dontTouch"])
+        self._groups = groups
         return groups
 
     def space_switch(self, controls):
@@ -488,7 +492,7 @@ class Rig:
             pm.parent(spaces[k], c)
 
         # FK Rotation Space
-        leg_settings_con = pm.PyNode(side+"Leg_settings_CON")
+        leg_settings_con = pm.PyNode(side + "Leg_settings_CON")
         pm.addAttr(leg_settings_con, ln="FK_rotationSpace", at="enum",
                    k=1, en=":".join(spaces.keys()))
 
@@ -513,7 +517,7 @@ class Rig:
         # IKFK Space Switch Blend
         orient_constraint = const_groups["result"].rx.inputs()[0]
         rotation_blend = pm.createNode(
-            "animBlendNodeAdditiveRotation", n=side+"Leg_resultOrientChoice")
+            "animBlendNodeAdditiveRotation", n=side + "Leg_resultOrientChoice")
         rotation_blend.weightB.set(0)
 
         leg_settings_con.FK_IK_blend >> rotation_blend.weightA
@@ -524,19 +528,20 @@ class Rig:
 
         point_constraint = const_groups["result"].tx.inputs()[0]
         translation_blend = pm.createNode(
-            "blendColors", n=side+"Leg_resultPointChoice")
-        translation_blend.color2.set([0]*3)
+            "blendColors", n=side + "Leg_resultPointChoice")
+        translation_blend.color2.set([0] * 3)
 
         leg_settings_con.FK_IK_blend >> translation_blend.blender
         point_constraint.constraintTranslate >> translation_blend.color1
         translation_blend.outputR >> const_groups["result"].tx
         translation_blend.outputG >> const_groups["result"].ty
         translation_blend.outputB >> const_groups["result"].tz
+        self._spaces = spaces
         return spaces
-    
+
     def _fk_rotation_space(self, spaces, driver=None, driven=None):
         side = self.side
-        
+
         orient_constraint = \
             pm.orientConstraint(spaces.values(), driven, mo=1)
         rotation_space_values = spaces.keys()
@@ -566,3 +571,69 @@ class Rig:
                 ott="step"
             )
         return orient_constraint
+
+    def clean_up(self, root_control=None):
+        side = self.side
+        pm.parent(side + "Leg_GRP", root_control)
+
+        controls = self.controls
+        groups = self._groups
+
+        # visibility connections
+        thigh_fk_offset = controls["thigh_fk"].getParent()
+        controls["leg_settings"].FK_visibility // thigh_fk_offset.v
+        controls["leg_settings"].FK_visibility >> groups["fk"].v
+
+        # hide everything except result, ik, fk chains and controls
+        for n in groups["dontTouch"].getChildren():
+            if "GRP" not in str(n) and "JNT" not in str(n):
+                n.v.set(0)
+
+        map(lambda x: x.v.set(0), groups["ik"].getChildren())
+        self.ik_chain["thigh"].v.set(1)
+
+        map(lambda x: x.v.set(0), groups["result"].getChildren())
+        self.result_chain["thigh"].v.set(1)
+
+        map(lambda x: x.v.set(0), groups["fk"].getChildren())
+        controls["thigh_fk"].getParent().v.set(1)
+
+        map(lambda x: x.v.set(0), controls["foot_ik"].getChildren())
+        map(lambda x: x.v.set(0), controls["knee_ik"].getChildren())
+
+        pm.hide(self._spaces.values())
+
+        # visibility connections
+        controls["leg_settings"].FK_visibility >> self.fk_chain["thigh"].v
+        controls["leg_settings"].IK_visibility >> self.ik_chain["thigh"].v
+
+        # lock and hide all
+        offsets = [c.getParent() for c in controls.values()]
+        items = offsets + groups.values() + [controls["leg_settings"]]
+
+        for i in items:
+            for at in "trs":
+                for ax in "xyz":
+                    pm.setAttr(i.attr(at + ax), lock=1, keyable=0)
+            pm.setAttr(i + ".v", lock=1, keyable=0)
+        pm.setAttr(groups["leg"].v, lock=0, keyable=0, channelBox=1)
+        pm.setAttr(groups["dontTouch"].v, lock=0, keyable=0, channelBox=1)
+
+        # lock and hide scale and visibility
+        items = controls.values()
+        for i in items:
+            for ax in "xyz":
+                pm.setAttr(i.attr("s" + ax), lock=1, keyable=0)
+            pm.setAttr(i + ".v", lock=1, keyable=0)
+
+        # lock and hide translate
+        items = filter(lambda v: "FK" in v, controls.values())
+        for i in items:
+            for ax in "xyz":
+                pm.setAttr(i.attr("t" + ax), lock=1, keyable=0)
+            pm.setAttr(i + ".v", lock=1, keyable=0)
+
+        # lock and hide rotate
+        for ax in "xyz":
+            pm.setAttr(controls["knee_ik"].attr("r" + ax), lock=1, keyable=0)
+        return True
