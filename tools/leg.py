@@ -443,9 +443,106 @@ class Rig:
         return nodes
     
     def cleanup(self):
-        # fk controls - lock and hide everything except rotate
+        side = self.side
+        thigh_pivot = self.result_chain["thigh"].getTranslation(ws=1)
 
-        # hide ik handles
-        # hide distance nodes
-        # lock and hide control offsets
-        return
+        groups = {k: None for k in ["leg", "dontTouch", "result", "ik", "fk"]}
+
+        for k in ["result", "ik", "fk"]:
+            n = k.upper() if len(k) == 2 else k
+            grp = pm.group(em=1, n="{}Leg_{}Const_GRP".format(side, n))
+            grp.setPivots(thigh_pivot, ws=1)
+            groups[k] = grp
+
+        groups["dontTouch"] = pm.group(em=1, n="dontTouch_GRP")
+        groups["leg"] = pm.group(n=side+"Leg_GRP")
+
+        pm.parent(self.result_chain["thigh"],
+                  groups["result"])
+        pm.parent(pm.ls(side+"*IK*JNT", side+"*_LOC", assemblies=1),
+                  groups["ik"])
+        pm.parent(self.controls["thigh_fk"].getParent(),
+                  groups["fk"])
+
+        pm.parent(groups["fk"], groups["leg"])
+        pm.parent(self.controls["foot_ik"].getParent(), groups["leg"])
+        pm.parent(self.controls["knee_ik"].getParent(), groups["leg"])
+
+        for search in ["length", "Distance", "JNT", "Const_GRP"]:
+            pm.parent(pm.ls(side+"*"+search, assemblies=1),
+                      groups["dontTouch"])
+        return groups
+
+    def space_switch(self, controls):
+        # Spaces
+        side = self.side
+        thigh_pivot = self.result_chain["thigh"].getTranslation(ws=1)
+
+        spaces = {}  # hip, body, root
+        for c in controls:
+            k = c.split("_", 1)[0]
+            spaces[k] = pm.spaceLocator(n="{}Leg_{}Space_LOC".format(side, k))
+            spaces[k].t.set(thigh_pivot)
+            pm.parent(spaces[k], c)
+
+        const_groups = {
+            "result": side+"Leg_resultConst_GRP",
+            "ik": side+"Leg_IKConst_GRP",
+            "fk": side+"Leg_FKConst_GRP"
+        }
+
+        # FK Rotation Space
+        leg_settings_con = pm.PyNode(side+"Leg_settings_CON")
+        pm.addAttr(leg_settings_con, ln="FK_rotationSpace", at="enum",
+                   k=1, en=":".join(spaces.keys()))
+
+        # --- SDK for result constrain group
+        self._fk_rotation_space(
+            spaces,
+            driver=leg_settings_con.FK_rotationSpace,
+            driven=const_groups["result"])
+
+        # --- SDK for FK constrain group
+        self._fk_rotation_space(
+            spaces,
+            driver=leg_settings_con.FK_rotationSpace,
+            driven=const_groups["fk"])
+
+        # Hip Drives Leg - point constraint hip space locator to const groups
+        connect_space = spaces[controls[0].split("_", 1)[0]]
+        for grp in const_groups.values():
+            pm.pointConstraint(connect_space, grp, mo=1)
+        return spaces
+    
+    def _fk_rotation_space(self, spaces, driver=None, driven=None):
+        side = self.side
+        
+        orient_constraint = \
+            pm.orientConstraint(spaces.values(), driven, mo=1)
+        rotation_space_values = spaces.keys()
+
+        for dv in rotation_space_values:
+            # key all weights to 0
+            map(lambda x:
+                pm.setDrivenKeyframe(
+                    x,
+                    cd=driver,
+                    dv=rotation_space_values.index(dv),
+                    v=0,
+                    itt="auto",
+                    ott="step"),
+                orient_constraint.listAttr(st="*Space_*"))
+
+            # key weight matching driven value to 1
+            weight = orient_constraint.listAttr(
+                st="{}Leg_{}Space_LOC*".format(side, dv))
+
+            pm.setDrivenKeyframe(
+                weight,
+                currentDriver=driver,
+                driverValue=rotation_space_values.index(dv),
+                value=1,
+                itt="auto",
+                ott="step"
+            )
+        return orient_constraint

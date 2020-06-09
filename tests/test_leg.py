@@ -33,6 +33,7 @@ class TestLeg(unittest.TestCase):
         self.assertTrue(knee_position,
                         "knee control not where expected")
 
+    @unittest.skip("")
     def test_ikfk_switch(self):
         leg = self.leg
         blend_nodes = leg.ikfk_switch()
@@ -40,6 +41,27 @@ class TestLeg(unittest.TestCase):
         leg.ik_leg()
         self.assertTrue(blend_nodes,
                         "did not create IK/FK switch")
+
+    @unittest.skip("")
+    def test_cleanup(self):
+        leg = self.leg
+        leg.ikfk_switch()
+        leg.fk_leg()
+        leg.ik_leg()
+        self.assertTrue(leg.cleanup(),
+                        "did not clean up")
+
+    def test_space_switch(self):
+        leg = self.leg
+        leg.ikfk_switch()
+        leg.fk_leg()
+        leg.ik_leg()
+        leg.cleanup()
+        controls = ["hip_CON", "body_CON", "root_transform_CON"]
+        for c in controls:
+            c = pm.spaceLocator(n=c)
+        self.assertTrue(leg.space_switch(controls),
+                        "did not create space switch")
 
     @unittest.skip("")
     def test_fk_leg(self):
