@@ -51,6 +51,7 @@ class TestLeg(unittest.TestCase):
         self.assertTrue(leg.cleanup(),
                         "did not clean up")
 
+    # @unittest.skip("")
     def test_space_switch(self):
         leg = self.leg
         leg.ikfk_switch()

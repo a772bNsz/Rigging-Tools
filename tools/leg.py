@@ -442,7 +442,7 @@ class Rig:
                              cd=leg_settings.autoManualKneeBlend, dv=1, v=1)
         return nodes
     
-    def cleanup(self):
+    def _create_groups(self):
         side = self.side
         thigh_pivot = self.result_chain["thigh"].getTranslation(ws=1)
 
@@ -474,6 +474,8 @@ class Rig:
         return groups
 
     def space_switch(self, controls):
+        const_groups = self._create_groups()
+
         # Spaces
         side = self.side
         thigh_pivot = self.result_chain["thigh"].getTranslation(ws=1)
@@ -484,12 +486,6 @@ class Rig:
             spaces[k] = pm.spaceLocator(n="{}Leg_{}Space_LOC".format(side, k))
             spaces[k].t.set(thigh_pivot)
             pm.parent(spaces[k], c)
-
-        const_groups = {
-            "result": side+"Leg_resultConst_GRP",
-            "ik": side+"Leg_IKConst_GRP",
-            "fk": side+"Leg_FKConst_GRP"
-        }
 
         # FK Rotation Space
         leg_settings_con = pm.PyNode(side+"Leg_settings_CON")
@@ -510,8 +506,32 @@ class Rig:
 
         # Hip Drives Leg - point constraint hip space locator to const groups
         connect_space = spaces[controls[0].split("_", 1)[0]]
-        for grp in const_groups.values():
+        for v in ["result", "ik", "fk"]:
+            grp = const_groups[v]
             pm.pointConstraint(connect_space, grp, mo=1)
+
+        # IKFK Space Switch Blend
+        orient_constraint = const_groups["result"].rx.inputs()[0]
+        rotation_blend = pm.createNode(
+            "animBlendNodeAdditiveRotation", n=side+"Leg_resultOrientChoice")
+        rotation_blend.weightB.set(0)
+
+        leg_settings_con.FK_IK_blend >> rotation_blend.weightA
+        orient_constraint.constraintRotate >> rotation_blend.inputB
+        rotation_blend.outputX >> const_groups["result"].rx
+        rotation_blend.outputY >> const_groups["result"].ry
+        rotation_blend.outputZ >> const_groups["result"].rz
+
+        point_constraint = const_groups["result"].tx.inputs()[0]
+        translation_blend = pm.createNode(
+            "blendColors", n=side+"Leg_resultPointChoice")
+        translation_blend.color2.set([0]*3)
+
+        leg_settings_con.FK_IK_blend >> translation_blend.blender
+        point_constraint.constraintTranslate >> translation_blend.color1
+        translation_blend.outputR >> const_groups["result"].tx
+        translation_blend.outputG >> const_groups["result"].ty
+        translation_blend.outputB >> const_groups["result"].tz
         return spaces
     
     def _fk_rotation_space(self, spaces, driver=None, driven=None):
