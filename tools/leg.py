@@ -2,8 +2,9 @@ import pymel.core as pm
 
 
 class Rig:
-    def __init__(self, root, side="left"):
+    def __init__(self, root, side="", root_control=""):
         self.side = side
+        self.root_control = root_control
 
         self.result_chain, self.ik_chain, self.fk_chain = \
             self._joint_chains(root, side)
@@ -194,11 +195,23 @@ class Rig:
         }
         return controls
 
-    def ik_leg(self):
-        # Dual Knee
-        no_flip_chain = self._dual_knee("noFlip")
-        pv_chain = self._dual_knee("pv")
-        self._dual_knee_switch(no_flip_chain, pv_chain)
+    def ik_leg(self, pv=1, no_flip=0):
+        if pv == 1 and no_flip == 0:
+            pv_chain = self.ik_chain
+            pv_hdl, pv_knee_loc = self._basic_ik_leg(pv_chain, knee_type="pv")
+            self._ik_stretch(pv_chain, knee_type="pv")
+            self._pv_knee(pv_chain, pv_knee_loc)
+
+        if no_flip == 1 and pv == 0:
+            no_flip_chain = self.ik_chain
+            no_flip_hdl, no_flip_knee_loc = \
+                self._basic_ik_leg(no_flip_chain, knee_type="noFlip")
+            self._ik_stretch(no_flip_chain, knee_type="noFlip")
+            self._no_flip_knee(no_flip_chain, no_flip_knee_loc)
+
+        if pv == 1 and no_flip == 1:
+            pv_chain, no_flip_chain = self._dual_knee()
+            self._dual_knee_switch(pv_chain, no_flip_chain)
 
         # IK Foot Handles on IK Chain
         ik_chain = self.ik_chain
@@ -224,59 +237,34 @@ class Rig:
         }
         return controls
 
-    def _dual_knee(self, knee_type):
-        # Basic IK Leg
-        dup_ik_chain = self._basic_ik_leg(knee_type)
-        leg_hdl = dup_ik_chain["thigh"].outputs(type="ikHandle")[0]
-
-        # IK Stretch and Bend
-        self._ik_stretch(knee_type, dup_ik_chain)
-
-        # Automatic or Manual Knee >> _noflip_knee() or _pv_knee()
-        knee_control = self.controls["knee_ik"]
+    def _basic_ik_leg(self, ik_chain, knee_type):
         side = self.side
-        knee_loc = pm.spaceLocator(n="{}Knee_{}_LOC".format(side, knee_type))
-        pm.matchTransform(knee_loc, knee_control)
-        pm.poleVectorConstraint(knee_loc, leg_hdl)
-
-        knee_method = "_{}_knee".format(knee_type.lower())
-        getattr(self, knee_method)(knee_loc, dup_ik_chain)
-        return dup_ik_chain
-
-    def _basic_ik_leg(self, knee_type):
-        foot_control = self.controls["foot_ik"]
-        side = self.side
-
-        # Duplicate IK Chain
-        ik_chain = {}
-        dup_chain = pm.duplicate(self.ik_chain["thigh"])
-        dup_chain += dup_chain[0].getChildren(ad=1)[::-1]
-        pm.delete(dup_chain.pop(), dup_chain.pop())
-        for k, jnt in zip(["thigh", "shin", "foot"], dup_chain):
-            n = jnt.replace("IK", knee_type + "_IK")
-            n = n[:-1] if jnt.endswith("1") else n
-            jnt.rename(n)
-            ik_chain[k] = jnt
 
         # IK Handles
         leg_hdl, leg_eff = pm.ikHandle(
             sj=ik_chain["thigh"],
             ee=ik_chain["foot"],
             sol="ikRPsolver")
+
         leg_hdl.rename("{}Leg_{}_HDL".format(side, knee_type))
         leg_eff.rename("{}Leg_{}_EFF".format(side, knee_type))
-        pm.parent(leg_hdl, foot_control)
-        return ik_chain
 
-    def _ik_stretch(self, knee_type, ik_chain):
-        # SDK for Leg Stretch and Bend
+        foot_control = self.controls["foot_ik"]
+        pm.parent(leg_hdl, foot_control)
+
+        # Pole Vector Constraint
+        knee_control = self.controls["knee_ik"]
+        knee_loc = pm.spaceLocator(n="{}Knee_{}_LOC".format(side, knee_type))
+        pm.matchTransform(knee_loc, knee_control)
+        pm.poleVectorConstraint(knee_loc, leg_hdl)
+        return leg_hdl, knee_loc
+
+    def _ik_stretch(self, ik_chain, knee_type=None):
         foot_control = self.controls["foot_ik"]
         side = self.side
 
-        leg_start_loc = pm.spaceLocator(
-            n="{}Leg_{}_IK_lengthStart_LOC".format(side, knee_type))
-        leg_end_loc = pm.spaceLocator(
-            n="{}Leg_{}_IK_lengthEnd_LOC".format(side, knee_type))
+        leg_start_loc = pm.spaceLocator(n=side + "Leg_IK_lengthStart_LOC")
+        leg_end_loc = pm.spaceLocator(n=side + "Leg_IK_lengthEnd_LOC")
 
         pm.matchTransform(leg_start_loc, ik_chain["thigh"], pos=1)
         pm.matchTransform(leg_end_loc, ik_chain["foot"], pos=1)
@@ -284,7 +272,14 @@ class Rig:
         leg_length = pm.distanceDimension(
             sp=leg_start_loc.worldPosition.get(),
             ep=leg_end_loc.worldPosition.get()).getParent()
-        leg_length.rename("{}Leg_{}_IK_length".format(side, knee_type))
+        leg_length.rename(side + "Leg_IK_length")
+
+        if knee_type:
+            leg_start_loc.rename(
+                "{}Leg_{}_IK_lengthStart_LOC".format(side, knee_type))
+            leg_end_loc.rename(
+                "{}Leg_{}_IK_lengthEnd_LOC".format(side, knee_type))
+            leg_length.rename("{}Leg_{}_IK_length".format(side, knee_type))
 
         pm.parent(leg_end_loc, foot_control)
 
@@ -321,9 +316,9 @@ class Rig:
             v=shin_length * 2
         )
         pm.setInfinity(ik_chain["foot"].tx, poi="linear")
-        return
+        return True
 
-    def _noflip_knee(self, knee_loc, ik_chain):
+    def _no_flip_knee(self, ik_chain, knee_loc):
         foot_control = self.controls["foot_ik"]
         side = self.side
         leg_hdl = ik_chain["thigh"].outputs(type="ikHandle")[0]
@@ -359,9 +354,9 @@ class Rig:
         foot_control.autoKneeShinLength >> knee_stretch.input1Y
         foot_sdk.output >> knee_stretch.input2Y
         knee_stretch.outputY >> ik_chain["foot"].tx
-        return
+        return True
 
-    def _pv_knee(self, knee_loc, ik_chain):
+    def _pv_knee(self, ik_chain, knee_loc):
         knee_control = self.controls["knee_ik"]
         foot_control = self.controls["foot_ik"]
         side = self.side
@@ -403,9 +398,53 @@ class Rig:
         pm.addAttr(knee_control,
                    ln="kneeSnap", at="float", k=1, min=0, max=1)
         knee_control.kneeSnap >> stretch_blend.blender
-        return
 
-    def _dual_knee_switch(self, no_flip_chain, pv_chain):
+        # Global Scale
+        pv_scale = pm.createNode(
+            "multiplyDivide", n="globalScale_leftLegNormalize_DIV")
+        pv_scale.operation.set(2)  # divide
+
+        thigh_to_knee_length.distance >> pv_scale.input1X
+        self.root_control.sy >> pv_scale.input2X
+        pv_scale.outputX >> stretch_blend.color1R
+
+        knee_to_foot_length.distance >> pv_scale.input1Y
+        self.root_control.sy >> pv_scale.input2Y
+        pv_scale.outputY >> stretch_blend.color1G
+        return True
+
+    def _dual_knee(self):
+        # --- pv knee
+        pv_chain = {}
+        jnt = pm.duplicate(self.ik_chain["foot"], un=1, po=1)[0]
+        for k in ["foot", "shin", "thigh"]:
+            n = jnt.replace("IK", "pv_IK")
+            n = n[:-1] if jnt.endswith("1") else n
+            jnt.rename(n)
+            pv_chain[k] = jnt
+            jnt = jnt.getParent()
+
+        pv_hdl, pv_knee_loc = self._basic_ik_leg(pv_chain, knee_type="pv")
+        self._ik_stretch(pv_chain, knee_type="pv")
+        self._pv_knee(pv_chain, pv_knee_loc)
+
+        # --- no flip knee
+        no_flip_chain = {}
+        jnt = pm.duplicate(self.ik_chain["foot"], un=1, po=1)[0]
+        for k in ["foot", "shin", "thigh"]:
+            n = jnt.replace("IK", "noFlip_IK")
+            n = n[:-1] if jnt.endswith("1") else n
+            jnt.rename(n)
+            no_flip_chain[k] = jnt
+            jnt = jnt.getParent()
+
+        no_flip_hdl, no_flip_knee_loc = \
+            self._basic_ik_leg(no_flip_chain, knee_type="noFlip")
+        self._ik_stretch(no_flip_chain, knee_type="noFlip")
+        self._no_flip_knee(no_flip_chain, no_flip_knee_loc)
+        return pv_chain, no_flip_chain
+    
+    def _dual_knee_switch(self, pv_chain, no_flip_chain):
         ik_chain = self.ik_chain
         leg_settings = self.controls["leg_settings"]
         names = ["thigh", "shin", "foot"]
@@ -445,7 +484,7 @@ class Rig:
                              cd=leg_settings.autoManualKneeBlend, dv=1, v=1)
         return nodes
 
-    def _create_groups(self):
+    def create_groups(self):
         side = self.side
         thigh_pivot = self.result_chain["thigh"].getTranslation(ws=1)
 
@@ -478,7 +517,7 @@ class Rig:
         return groups
 
     def space_switch(self, controls):
-        const_groups = self._create_groups()
+        const_groups = self._groups
 
         # Spaces
         side = self.side
@@ -572,12 +611,12 @@ class Rig:
             )
         return orient_constraint
 
-    def clean_up(self, root_control=None):
+    def clean_up(self):
         side = self.side
-        pm.parent(side + "Leg_GRP", root_control)
-
         controls = self.controls
         groups = self._groups
+
+        pm.parent(groups["leg"], self.root_control)
 
         # visibility connections
         thigh_fk_offset = controls["thigh_fk"].getParent()

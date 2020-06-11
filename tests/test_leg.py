@@ -17,103 +17,138 @@ class TestLeg(unittest.TestCase):
         pm.joint(p=[8.93, 2.27, 7.47])  # ball
         pm.joint(p=[8.93, 1.82, 19.65])  # toe
 
-        self.leg = Rig(root, side="left")
+        self.controls = ["hip_CON", "body_CON", "root_transform_CON"]
+
+        parent = None
+        for c in self.controls[::-1]:
+            loc = pm.spaceLocator(n=c)
+            loc.setParent(parent)
+            parent = loc
+
+        pm.setAttr(self.controls[1]+".translate", [0.0, 139.22, 0.7])
+        root_con = pm.PyNode(self.controls[-1])
+
+        self.leg = Rig(root, side="left", root_control=root_con)
 
     @unittest.skip("")
-    def test_init_chain(self):
-        self.assertTrue(str(self.leg.ik_chain["thigh"]) == "leftThigh_IK_JNT",
-                        "IK thigh not correctly named")
-        self.assertTrue(str(self.leg.fk_chain["toe"]) == "leftToe_FK_JNT",
-                        "FK toe not correctly named")
+    def test_joint_chains(self):
+        leg = self.leg
+        made_all_chains = leg.result_chain and leg.ik_chain and leg.fk_chain
+        self.assertTrue(made_all_chains,
+                        "did not make and rename result, ik, and fk chains")
 
     @unittest.skip("")
-    def test_init_controls(self):
-        position = self.leg.controls["knee_ik"].getTranslation(space="world")
-        knee_position = round(position[2], 2) == 12.37
-        self.assertTrue(knee_position,
-                        "knee control not where expected")
+    def test_controls(self):
+        leg = self.leg
+        made_all_controls = leg.controls["leg_settings"] \
+                            and leg.controls["foot_ik"] \
+                            and leg.controls["shin_fk"]
+        self.assertTrue(made_all_controls,
+                        "did not make all controls for leg rig")
 
     @unittest.skip("")
     def test_ikfk_switch(self):
         leg = self.leg
         blend_nodes = leg.ikfk_switch()
-        leg.fk_leg()
-        leg.ik_leg()
         self.assertTrue(blend_nodes,
                         "did not create IK/FK switch")
 
     @unittest.skip("")
+    def test_fk_leg(self):
+        leg = self.leg
+        fk_leg_controls = leg.fk_leg()
+        self.assertTrue(fk_leg_controls["thigh"],
+                        "did not create fk leg")
+
+    def test_basic_ik_leg_pv(self):
+        leg = self.leg
+        ik_chain = leg.ik_chain
+        self.assertTrue(leg._basic_ik_leg(ik_chain, knee_type="pv"),
+                        "did not create basic IK leg with pv knee")
+
+    def test_ik_leg_stretch_pv(self):
+        leg = self.leg
+        pv_chain = leg.ik_chain
+        leg._basic_ik_leg(pv_chain, knee_type="pv")
+        self.assertTrue(leg._ik_stretch(pv_chain, knee_type="pv"),
+                        "no flip IK leg does not stretch")
+    
+    def test_pv_knee(self):
+        leg = self.leg
+        pv_chain = leg.ik_chain
+        pv_hdl, pv_knee_loc = leg._basic_ik_leg(pv_chain, knee_type="pv")
+        leg._ik_stretch(pv_chain, knee_type="pv")
+        self.assertTrue(leg._pv_knee(pv_chain, pv_knee_loc),
+                        "did not create pv knee on IK leg")
+
+    def test_dual_knee(self):
+        self.assertTrue(self.leg._dual_knee(),
+                        "did not create dual knee")
+
+    def test_dual_knee_switch(self):
+        leg = self.leg
+        leg.ikfk_switch()
+        pv_chain, no_flip_chain = leg._dual_knee()
+        self.assertTrue(leg._dual_knee_switch(pv_chain, no_flip_chain),
+                        "did not create dual knee switch")
+        
+    def test_ik_leg_pv(self):
+        leg = self.leg
+        self.assertTrue(leg.ik_leg(),
+                        "did not create pv IK leg")
+
+    def test_ik_leg_no_flip(self):
+        leg = self.leg
+        self.assertTrue(leg.ik_leg(pv=0, no_flip=1),
+                        "did not create no flip IK leg")
+
+    def test_dual_ik_leg(self):
+        leg = self.leg
+        leg.ikfk_switch()
+        self.assertTrue(leg.ik_leg(pv=1, no_flip=1),
+                        "did not create dual IK leg")
+
     def test_create_groups(self):
         leg = self.leg
         leg.ikfk_switch()
         leg.fk_leg()
-        leg.ik_leg()
-        self.assertTrue(leg._create_groups(),
-                        "did not clean up")
+        leg.ik_leg(pv=1, no_flip=1)
+        const_groups = leg.create_groups()
+        self.assertTrue(const_groups,
+                        "did not create groups")
 
-    @unittest.skip("")
     def test_space_switch(self):
         leg = self.leg
+        controls = self.controls
+
         leg.ikfk_switch()
         leg.fk_leg()
-        leg.ik_leg()
-        controls = ["hip_CON", "body_CON", "root_transform_CON"]
-        for c in controls:
-            c = pm.spaceLocator(n=c)
+        leg.ik_leg(pv=1, no_flip=1)
+        leg.create_groups()
         self.assertTrue(leg.space_switch(controls),
                         "did not create space switch")
 
-    @unittest.skip("")
-    def test_fk_leg(self):
+    def test_clean_up(self):
         leg = self.leg
-        self.assertTrue(leg.fk_leg(),
-                        "did not create fk leg")
+        controls = self.controls
 
-    @unittest.skip("")
-    def test_no_flip_knee(self):
-        leg = self.leg
-        self.assertTrue(leg._dual_knee("noFlip"),
-                        "did not create no flip knee")
-
-    @unittest.skip("")
-    def test_pv_knee(self):
-        leg = self.leg
-        self.assertTrue(leg._dual_knee("pv"),
-                        "did not create pole vector knee")
-
-    @unittest.skip("")
-    def test_dual_knee_switch(self):
-        leg = self.leg
-        no_flip_chain = leg._dual_knee("noFlip")
-        pv_chain = leg._dual_knee("pv")
-        self.assertTrue(leg._dual_knee_switch(no_flip_chain, pv_chain),
-                        "did not create dual knee switch")
-
-    @unittest.skip("")
-    def test_ik_leg(self):
-        leg = self.leg
-        self.assertTrue(leg.ik_leg(), "ik leg was not made")
-
-    # @unittest.skip("")
-    def test_cleanup(self):
-        leg = self.leg
         leg.ikfk_switch()
         leg.fk_leg()
-        leg.ik_leg()
-        controls = ["hip_CON", "body_CON", "root_transform_CON"]
-        for c in controls:
-            c = pm.spaceLocator(n=c)
+        leg.ik_leg(pv=1, no_flip=1)
+        leg.create_groups()
         leg.space_switch(controls)
-
-        self.assertTrue(leg.clean_up(root_control="root_transform_CON"),
+        self.assertTrue(leg.clean_up(),
                         "did not clean up leg rig")
 
     @classmethod
     def tearDownClass(cls):
-        from tools.control_shapes import ControlShapes
-        json_file = __file__.split("tests")[0] + "/results/leg.json"
-        cs = ControlShapes()
-        cs.load(json_file=json_file)
+        try:
+            from tools.control_shapes import ControlShapes
+            json_file = __file__.split("tests")[0] + "/results/leg.json"
+            cs = ControlShapes()
+            cs.load(json_file=json_file)
+        except:
+            pass
         pm.saveAs("result.ma", type="mayaAscii")
         print ">>>>> TEARDOWN"
 
