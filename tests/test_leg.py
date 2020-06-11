@@ -153,10 +153,88 @@ class TestLeg(unittest.TestCase):
         print ">>>>> TEARDOWN"
 
 
+class TestBothLegs(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        print ">>>>> SETUP"
+
+    def setUp(self):
+        pm.newFile(f=1)
+
+        self.controls = ["hip_CON", "body_CON", "root_transform_CON"]
+
+        parent = None
+        for c in self.controls[::-1]:
+            loc = pm.spaceLocator(n=c)
+            loc.setParent(parent)
+            parent = loc
+
+        pm.setAttr(self.controls[1]+".translate", [0.0, 139.22, 0.7])
+        root_con = pm.PyNode(self.controls[-1])
+
+        pm.select(cl=1)
+        root = pm.joint(p=[8.93, 83.9, 0.93])  # thigh
+        pm.joint(p=[8.93, 53.22, 2.37])  # shin
+        pm.joint(p=[8.93, 11.02, -3.94])  # foot
+        pm.joint(p=[8.93, 2.27, 7.47])  # ball
+        pm.joint(p=[8.93, 1.82, 19.65])  # toe
+
+        self.left_leg = Rig(root, side="left", root_control=root_con)
+
+        pm.select(cl=1)
+        root = pm.joint(p=[-8.93, 83.9, 0.93])  # thigh
+        pm.joint(p=[-8.93, 53.22, 2.37])  # shin
+        pm.joint(p=[-8.93, 11.02, -3.94])  # foot
+        pm.joint(p=[-8.93, 2.27, 7.47])  # ball
+        pm.joint(p=[-8.93, 1.82, 19.65])  # toe
+
+        self.right_leg = Rig(root, side="right", root_control=root_con)
+
+    @unittest.skip("")
+    def test_init(self):
+        right_leg = self.right_leg.result_chain
+        left_leg = self.left_leg.result_chain
+        self.assertTrue(right_leg and left_leg,
+                        "did not initialize left and right legs")
+
+    def test_rigging_both_legs(self):
+        controls = self.controls  # hip, body, root
+
+        rigged_both_legs = []
+        for side in ["left", "right"]:
+            leg = getattr(self, side + "_leg")
+        
+            leg.ikfk_switch()
+            leg.fk_leg()
+            leg.ik_leg(pv=1, no_flip=1)
+            leg.create_groups()
+            leg.space_switch(controls)
+            rigged = leg.clean_up()  # returns True
+            rigged_both_legs += [rigged]
+
+        self.assertTrue(all(rigged_both_legs),
+                        "did not rig both legs")
+
+    @classmethod
+    def tearDownClass(cls):
+        try:
+            from tools.control_shapes import ControlShapes
+            json_file = __file__.split("tests")[0] + "/results/legs.json"
+            cs = ControlShapes()
+            cs.load(json_file=json_file)
+        except:
+            pass
+        pm.saveAs("result.ma", type="mayaAscii")
+        print ">>>>> TEARDOWN"
+
+
 if __name__ == "__main__":
     from maya import standalone, cmds
 
     standalone.initialize(name="python")
     cmds.loadPlugin("lookdevKit")
 
-    unittest.main(verbosity=2, failfast=1)
+    # unittest.main(verbosity=2, failfast=1)
+
+    suite = unittest.TestLoader().loadTestsFromTestCase(TestBothLegs)
+    unittest.TextTestRunner(verbosity=2, failfast=1).run(suite)
