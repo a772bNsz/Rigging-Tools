@@ -29,11 +29,30 @@ class SampleTest(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         pm.saveAs("result.ma", type="mayaAscii")
-        print "\n>>>>>", pm.sceneName()
+
+
+class SampleInheritTest(SampleTest):
+    @classmethod
+    def setUpClass(cls):
+        super(SampleInheritTest, cls).setUpClass()
+        print ">>>>> SETUP"
+
+    def test_version_is_2020(self):
+        self.assertNotEqual(20200000, maya_version, "test_version_is_2020")
+
+    @classmethod
+    def tearDownClass(cls):
+        super(SampleInheritTest, cls).tearDownClass()
+        print ">>>>> TEARDOWN"
 
 
 if __name__ == "__main__":
     from maya import standalone, cmds
     standalone.initialize(name='python')
     cmds.loadPlugin("lookdevKit")  # not necessary if $PYMEL_SKIP_INIT=0
-    unittest.main(verbosity=3, failfast=1)
+
+    # unittest.main(verbosity=3, failfast=1)
+
+    test_case = SampleInheritTest
+    suite = unittest.TestLoader().loadTestsFromTestCase(test_case)
+    runner = unittest.TextTestRunner(verbosity=3, failfast=1).run(suite)
