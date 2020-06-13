@@ -12,7 +12,7 @@ maya_version = versions.current()
 class SampleTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        pm.system.newFile()
+        pm.newFile()
 
     @unittest.skipIf(20190000 != maya_version, "test_version_is_2019")
     def test_version_is_2019(self):
@@ -28,12 +28,12 @@ class SampleTest(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        pm.system.saveAs("result.ma", type="mayaAscii")
-        print "\n>>>>>", pm.system.sceneName()
+        pm.saveAs("result.ma", type="mayaAscii")
+        print "\n>>>>>", pm.sceneName()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     from maya import standalone, cmds
     standalone.initialize(name='python')
     cmds.loadPlugin("lookdevKit")  # not necessary if $PYMEL_SKIP_INIT=0
-    unittest.main(verbosity=3)
+    unittest.main(verbosity=3, failfast=1)
