@@ -96,7 +96,7 @@ class MyWindow(QtWidgets.QWidget):
                 self.ui.shape_grd.addWidget(buttons[-1], r, c)
 
         thumbnails = path(
-            path(__file__).dirname() + "/shape_thumbnails").files("*.tiff")
+            __file__.split("/ui")[0] + "/shape_thumbnails").files("*.tiff")
         for f, pbn in zip(thumbnails, buttons):
             pbn.setMinimumHeight(60)
             pbn.setStyleSheet("background-color: black")
