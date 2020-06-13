@@ -1,7 +1,111 @@
 import pymel.core as pm
 
 
-class Rig:
+class Foot(object):
+    def __init__(self, side="", ik_chain={}, foot_control=""):
+        # IK Foot Handles on IK Chain
+        ball_hdl, ball_eff = pm.ikHandle(
+            sj=ik_chain["foot"], ee=ik_chain["ball"], sol="ikRPsolver")
+        ball_hdl.rename(side + "Ball_HDL")
+        ball_eff.rename(side + "Ball_EFF")
+        pm.parent(ball_hdl, foot_control)
+
+        toe_hdl, toe_eff = pm.ikHandle(
+            sj=ik_chain["ball"], ee=ik_chain["toe"], sol="ikRPsolver")
+        toe_hdl.rename(side + "Toe_HDL")
+        toe_eff.rename(side + "Toe_EFF")
+        pm.parent(toe_hdl, foot_control)
+
+        self.handles = {
+            "ball": ball_hdl,
+            "toe": toe_hdl
+        }
+
+        self.locators = {
+            "heel": "heel_LOC",
+            "ball": "ball_LOC",
+            "toe": "toe_LOC",
+            "inner": "innerFoot_LOC",
+            "outer": "outerFoot_LOC"
+        }
+        self.side = side
+        self.ik_chain = ik_chain
+        self.foot_control = foot_control
+
+    def ik_foot_setup(self):
+        locators = self.locators
+        side = self.side
+
+        for k, v in locators.items():
+            n = v if "" != side else side + v.capitalize()
+            locators[k] = pm.spaceLocator(n=n)
+
+        ball_loc = locators["ball"]
+        ball_jnt = self.ik_chain["ball"]
+        pm.matchTransform(ball_loc, ball_jnt, pos=1)
+
+        toe_loc = locators["toe"]
+        toe_jnt = self.ik_chain["toe"]
+        toe_loc.rotateOrder.set(2)
+        pm.matchTransform(toe_loc, toe_jnt, pos=1)
+        return locators
+
+    def ik_foot(self, toe_wiggle=1, toe_spin=1, lean=1, tilt=1, roll=1):
+        added_feature = False
+        if toe_wiggle:
+            added_feature = self._toe_wiggle()
+
+        if toe_spin:
+            added_feature = self._toe_spin()
+
+        if lean:
+            added_feature = self._lean()
+
+        if tilt:
+            added_feature = self._tilt()
+
+        if roll:
+            added_feature = self._roll()
+
+        self._clean_up()
+        return added_feature
+
+    def _toe_wiggle(self):
+        side = self.side
+        name = "toeWiggle_GRP"
+        name = name if "" == side else side + name.capitalize()
+
+        ball_jnt = self.ik_chain["ball"]
+        toe_loc = self.locators["toe"]
+        toe_hdl = self.handles["toe"]
+        toe_wiggle_grp = pm.group(em=1, n=name)
+
+        pm.matchTransform(toe_wiggle_grp, ball_jnt, pos=1)
+        pm.parent(toe_hdl, toe_wiggle_grp)
+        pm.parent(toe_wiggle_grp, toe_loc)
+
+        foot_control = self.foot_control
+        pm.addAttr(foot_control, ln="toeWiggle", at="float", k=1)
+        foot_control.toeWiggle >> toe_wiggle_grp.rx
+        return True
+    
+    def _toe_spin(self):
+        return True
+    
+    def _lean(self):
+        return True
+    
+    def _tilt(self):
+        return True
+    
+    def _roll(self):
+        return True
+
+    def _clean_up(self):
+        return True
+
+
+class Rig(Foot):
     def __init__(self, root, side="", root_control=""):
         self.side = side
         self.root_control = root_control
@@ -14,6 +118,12 @@ class Rig:
 
         self._groups = None  # leg_GRP, const groups, dontTouch
         self._spaces = None  # hip, body, and root space locators
+
+        self.foot = super(Rig, self)
+        self.foot.__init__(
+            side=side,
+            ik_chain=self.ik_chain,
+            foot_control=self.controls["foot_ik"])
 
     @staticmethod
     def _joint_chains(root, side):
@@ -213,26 +323,9 @@ class Rig:
             pv_chain, no_flip_chain = self._dual_knee()
             self._dual_knee_switch(pv_chain, no_flip_chain)
 
-        # IK Foot Handles on IK Chain
-        ik_chain = self.ik_chain
-        side = self.side
-        foot_control = self.controls["foot_ik"]
-
-        ball_hdl, ball_eff = pm.ikHandle(
-            sj=ik_chain["foot"], ee=ik_chain["ball"], sol="ikRPsolver")
-        ball_hdl.rename(side + "Ball_HDL")
-        ball_eff.rename(side + "Ball_EFF")
-        pm.parent(ball_hdl, foot_control)
-
-        toe_hdl, toe_eff = pm.ikHandle(
-            sj=ik_chain["ball"], ee=ik_chain["toe"], sol="ikRPsolver")
-        toe_hdl.rename(side + "Toe_HDL")
-        toe_eff.rename(side + "Toe_EFF")
-        pm.parent(toe_hdl, foot_control)
-
         # Controls
         controls = {
-            "foot": foot_control,
+            "foot": self.controls["foot_ik"],
             "knee": self.controls["knee_ik"]
         }
         return controls
