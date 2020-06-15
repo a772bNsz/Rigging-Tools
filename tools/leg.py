@@ -50,25 +50,24 @@ class Foot(object):
         pm.matchTransform(toe_loc, toe_jnt, pos=1)
         return locators
 
-    def ik_foot(self, toe_wiggle=1, toe_spin=1, lean=1, tilt=1, roll=1):
-        added_feature = False
-        if toe_wiggle:
-            added_feature = self._toe_wiggle()
-
-        if toe_spin:
-            added_feature = self._toe_spin()
-
-        if lean:
-            added_feature = self._lean()
+    def ik_foot(self, roll=1, tilt=1, lean=1, toe_spin=1, toe_wiggle=1):
+        if roll:
+            self._roll()
 
         if tilt:
-            added_feature = self._tilt()
+            self._tilt()
 
-        if roll:
-            added_feature = self._roll()
+        if lean:
+            self._lean()
+
+        if toe_spin:
+            self._toe_spin()
+
+        if toe_wiggle:
+            self._toe_wiggle()
 
         self._clean_up()
-        return added_feature
+        return True
 
     def _toe_wiggle(self):
         side = self.side
@@ -90,12 +89,37 @@ class Foot(object):
         return True
     
     def _toe_spin(self):
+        toe_loc = self.locators["toe"]
+        foot_control = self.foot_control
+        pm.addAttr(foot_control, ln="toeSpin", at="float", k=1)
+        foot_control.toeSpin >> toe_loc.ry
         return True
     
     def _lean(self):
+        toe_loc = self.locators["toe"]
+        foot_control = self.foot_control
+        pm.addAttr(foot_control, ln="lean", at="float", k=1)
+        foot_control.lean >> toe_loc.rz
         return True
     
     def _tilt(self):
+        heel_loc = self.locators["heel"]
+        outer_loc = self.locators["outer"]
+        inner_loc = self.locators["inner"]
+        toe_loc = self.locators["toe"]
+
+        pm.parent(toe_loc, inner_loc)
+        pm.parent(inner_loc, outer_loc)
+        pm.parent(outer_loc, heel_loc)
+
+        foot_control = self.foot_control
+        pm.addAttr(foot_control, ln="tilt", at="float", k=1, min=-90, max=90)
+
+        pm.setDrivenKeyframe(inner_loc.rz, cd=foot_control.tilt, dv=0, v=0)
+        pm.setDrivenKeyframe(outer_loc.rz, cd=foot_control.tilt, dv=0, v=0)
+
+        pm.setDrivenKeyframe(inner_loc.rz, cd=foot_control.tilt, dv=-90, v=90)
+        pm.setDrivenKeyframe(outer_loc.rz, cd=foot_control.tilt, dv=90, v=-90)
         return True
     
     def _roll(self):
