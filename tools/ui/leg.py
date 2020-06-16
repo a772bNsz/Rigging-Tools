@@ -42,6 +42,11 @@ class MyWindow(QWidget):
         self.setWindowTitle(window_title)
         self.init_ui()
 
+        self.leg = None
+        self.left_leg = None
+        self.right_leg = None
+        self.locators = {}
+
     def import_ui(self):
         """
         Imports the designer ui file from disk (eliminating the step of
@@ -64,9 +69,45 @@ class MyWindow(QWidget):
         self.ui.add_btn.clicked.connect(self._add_list_widget_item)
         self.ui.minus_btn.clicked.connect(self._minus_list_widget_item)
 
-        self.ui.right_btn.clicked.connect(lambda x="right": self.rig_leg(x))
-        self.ui.mid_btn.clicked.connect(lambda x="": self.rig_leg(x))
-        self.ui.left_btn.clicked.connect(lambda x="left": self.rig_leg(x))
+        self.ui.leg_right_btn.clicked.connect(
+            lambda x="right": self.rig_leg(x))
+        self.ui.leg_mid_btn.clicked.connect(
+            lambda x="": self.rig_leg(x))
+        self.ui.leg_left_btn.clicked.connect(
+            lambda x="left": self.rig_leg(x))
+
+        self.ui.setup_right_btn.clicked.connect(
+            lambda x="right": self.setup_foot(x))
+        self.ui.setup_mid_btn.clicked.connect(
+            lambda x="": self.setup_foot(x))
+        self.ui.setup_left_btn.clicked.connect(
+            lambda x="left": self.setup_foot(x))
+
+        self.ui.foot_right_btn.clicked.connect(
+            lambda x="right": self.rig_foot(x))
+        self.ui.foot_mid_btn.clicked.connect(
+            lambda x="": self.rig_foot(x))
+        self.ui.foot_left_btn.clicked.connect(
+            lambda x="left": self.rig_foot(x))
+        return
+
+    def rig_foot(self, side):
+        getattr(self, side + "_leg").ik_foot()
+        pm.select(cl=1)
+        return
+
+    def setup_foot(self, side):
+        if self.locators:
+            new_locators = getattr(self, side + "_leg").ik_foot_setup()
+            for old, new in zip(self.locators.values(), new_locators.values()):
+                position = old.getTranslation(space="world")
+                position[0] = position[0] * -1
+                new.setTranslation(position, space="world")
+            self.locators = new_locators
+
+        self.locators = getattr(self, side + "_leg").ik_foot_setup()
+
+        pm.select([self.locators[x] for x in ["heel", "inner", "outer"]])
         return
 
     def rig_leg(self, side):
@@ -91,12 +132,20 @@ class MyWindow(QWidget):
         leg.create_groups()
         leg.space_switch(controls)
         leg.clean_up()
+
+        if "right" == side:
+            self.right_leg = leg
+        elif "left" == side:
+            self.left_leg = leg
+        else:
+            self.leg = leg
+
+        pm.select(cl=1)
         return
 
     def _add_list_widget_item(self):
         for sel in pm.ls(os=1):
             item = QListWidgetItem(str(sel))
-            # self.ui.space_switch_lsw.addItem(item)
             self.ui.space_switch_lsw.insertItem(0, item)
         return
 

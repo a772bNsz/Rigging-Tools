@@ -28,6 +28,7 @@ class Foot(object):
             "inner": "innerFoot_LOC",
             "outer": "outerFoot_LOC"
         }
+
         self.side = side
         self.ik_chain = ik_chain
         self.foot_control = foot_control
@@ -37,7 +38,7 @@ class Foot(object):
         side = self.side
 
         for k, v in locators.items():
-            n = v if "" != side else side + v.capitalize()
+            n = v if "" == side else side + v[0].upper() + v[1:]
             locators[k] = pm.spaceLocator(n=n)
 
         ball_loc = locators["ball"]
@@ -50,29 +51,31 @@ class Foot(object):
         pm.matchTransform(toe_loc, toe_jnt, pos=1)
         return locators
 
-    def ik_foot(self, roll=1, tilt=1, lean=1, toe_spin=1, toe_wiggle=1):
-        if roll:
-            self._roll()
+    def ik_foot(self):
+        self._roll()
+        self._tilt()
+        self._lean()
+        self._toe_spin()
+        self._toe_wiggle()
 
-        if tilt:
-            self._tilt()
+        foot_control = self.foot_control
+        ball_loc = self.locators["ball"]
+        children = foot_control.getChildren(type="transform")
+        pm.parent(children, ball_loc)
 
-        if lean:
-            self._lean()
+        toe_loc = self.locators["toe"]
+        pm.parent(ball_loc, toe_loc)
 
-        if toe_spin:
-            self._toe_spin()
+        heel_loc = self.locators["heel"]
+        pm.parent(heel_loc, foot_control)
 
-        if toe_wiggle:
-            self._toe_wiggle()
-
-        self._clean_up()
+        heel_loc.hide()
         return True
 
     def _toe_wiggle(self):
         side = self.side
         name = "toeWiggle_GRP"
-        name = name if "" == side else side + name.capitalize()
+        name = name if "" == side else side + name[0].upper() + name[1:]
 
         ball_jnt = self.ik_chain["ball"]
         toe_loc = self.locators["toe"]
@@ -84,21 +87,21 @@ class Foot(object):
         pm.parent(toe_wiggle_grp, toe_loc)
 
         foot_control = self.foot_control
-        pm.addAttr(foot_control, ln="toeWiggle", at="float", k=1)
+        pm.addAttr(foot_control, ln="toeWiggle", at="doubleAngle", k=1)
         foot_control.toeWiggle >> toe_wiggle_grp.rx
         return True
     
     def _toe_spin(self):
         toe_loc = self.locators["toe"]
         foot_control = self.foot_control
-        pm.addAttr(foot_control, ln="toeSpin", at="float", k=1)
+        pm.addAttr(foot_control, ln="toeSpin", at="doubleAngle", k=1)
         foot_control.toeSpin >> toe_loc.ry
         return True
     
     def _lean(self):
         toe_loc = self.locators["toe"]
         foot_control = self.foot_control
-        pm.addAttr(foot_control, ln="lean", at="float", k=1)
+        pm.addAttr(foot_control, ln="lean", at="doubleAngle", k=1)
         foot_control.lean >> toe_loc.rz
         return True
     
@@ -113,19 +116,110 @@ class Foot(object):
         pm.parent(outer_loc, heel_loc)
 
         foot_control = self.foot_control
-        pm.addAttr(foot_control, ln="tilt", at="float", k=1, min=-90, max=90)
+        pm.addAttr(foot_control, ln="tilt",
+                   at="doubleAngle", k=1, min=-90, max=90)
 
         pm.setDrivenKeyframe(inner_loc.rz, cd=foot_control.tilt, dv=0, v=0)
         pm.setDrivenKeyframe(outer_loc.rz, cd=foot_control.tilt, dv=0, v=0)
 
-        pm.setDrivenKeyframe(inner_loc.rz, cd=foot_control.tilt, dv=-90, v=90)
-        pm.setDrivenKeyframe(outer_loc.rz, cd=foot_control.tilt, dv=90, v=-90)
+        if "right" == self.side:
+            pm.setDrivenKeyframe(
+                inner_loc.rz, cd=foot_control.tilt, dv=90, v=-90)
+            pm.setDrivenKeyframe(
+                outer_loc.rz, cd=foot_control.tilt, dv=-90, v=90)
+        else:
+            pm.setDrivenKeyframe(
+                inner_loc.rz, cd=foot_control.tilt, dv=-90, v=90)
+            pm.setDrivenKeyframe(
+                outer_loc.rz, cd=foot_control.tilt, dv=90, v=-90)
         return True
     
     def _roll(self):
-        return True
+        side = self.side
+        foot_control = self.foot_control
+        pm.addAttr(foot_control, ln="roll", at="float", k=1)
+        pm.addAttr(foot_control, ln="bendLimitAngle", at="float", k=1, dv=45)
+        pm.addAttr(foot_control, ln="toeStraightAngle", at="float", k=1, dv=70)
 
-    def _clean_up(self):
+        # connect to heel loc
+        heel_loc = self.locators["heel"]
+        name = "heel_rotClamp"
+        name = name if "" == side else side + name[0].upper() + name[1:]
+
+        heel_clamp = pm.createNode("clamp", n=name)
+        heel_clamp.minR.set(-90)
+        foot_control.roll >> heel_clamp.inputR
+        heel_clamp.outputR >> heel_loc.rx
+
+        # connect to toe loc
+        name = "toe_bendToStraightClamp"
+        name = name if "" == side else side + name[0].upper() + name[1:]
+        toe_clamp = pm.createNode("clamp", n=name)
+
+        foot_control.roll >> toe_clamp.inputR
+        foot_control.toeStraightAngle >> toe_clamp.maxR
+        foot_control.bendLimitAngle >> toe_clamp.minR
+
+        name = name.replace("Clamp", "Percent")
+        toe_percent = pm.createNode("setRange", n=name)
+        toe_percent.maxX.set(1)
+
+        toe_clamp.inputR >> toe_percent.valueX
+        toe_clamp.minR >> toe_percent.oldMinX
+        toe_clamp.maxR >> toe_percent.oldMaxX
+
+        name = "toe_roll_MULT"
+        name = name if "" == side else side + name[0].upper() + name[1:]
+        toe_mult = pm.createNode("floatMath", n=name)
+        toe_mult.operation.set(2)  # multiply
+
+        toe_percent.outValueX >> toe_mult.floatA
+        toe_percent.valueX >> toe_mult.floatB
+
+        toe_loc = self.locators["toe"]
+        toe_mult.outFloat >> toe_loc.rx
+
+        # connect to ball loc
+        name = "ball_zeroToBendClamp"
+        name = name if "" == side else side + name[0].upper() + name[1:]
+        ball_clamp = pm.createNode("clamp", n=name)
+
+        foot_control.roll >> ball_clamp.inputR
+        foot_control.bendLimitAngle >> ball_clamp.maxR
+
+        name = name.replace("Clamp", "Percent")
+        ball_percent = pm.createNode("setRange", n=name)
+        ball_percent.maxX.set(1)
+
+        ball_clamp.inputR >> ball_percent.valueX
+        ball_clamp.minR >> ball_percent.oldMinX
+        ball_clamp.maxR >> ball_percent.oldMaxX
+
+        name = "toe_invertPercentage"
+        name = name if "" == side else side + name[0].upper() + name[1:]
+        toe_inverse = pm.createNode("floatMath", n=name)
+        toe_inverse.operation.set(1)  # subtract
+        toe_inverse.floatA.set(1)
+
+        toe_percent.outValueX >> toe_inverse.floatB
+
+        name = "ball_percent_MULT"
+        name = name if "" == side else side + name[0].upper() + name[1:]
+        ball_percent_mult = pm.createNode("floatMath", n=name)
+        ball_percent_mult.operation.set(2)  # multiply
+
+        ball_percent.outValueX >> ball_percent_mult.floatA
+        toe_inverse.outFloat >> ball_percent_mult.floatB
+
+        name = name.replace("percent", "roll")
+        ball_roll_mult = pm.createNode("floatMath", n=name)
+        ball_roll_mult.operation.set(2)  # multiply
+
+        ball_percent_mult.outFloat >> ball_roll_mult.floatA
+        ball_percent.valueX >> ball_roll_mult.floatB
+
+        ball_loc = self.locators["ball"]
+        ball_roll_mult.outFloat >> ball_loc.rx
         return True
 
 
@@ -209,7 +303,7 @@ class Rig(Foot):
 
         knee_ik = pm.spaceLocator(n=side + "Knee_CON")
         pm.matchTransform(knee_ik, ik_chain["shin"], pos=1)
-        knee_ik.tz.set(knee_ik.tz.get() + 10)
+        knee_ik.tz.set(knee_ik.tz.get() + 16)
         controls["knee_ik"] = knee_ik
 
         if pm.objExists("settings_GRP"):
@@ -449,7 +543,7 @@ class Rig(Foot):
         pm.parent(no_flip_group, foot_control)
         pm.parent(knee_loc, no_flip_group)
 
-        pm.addAttr(foot_control, ln="kneeTwist", at="float", k=1)
+        pm.addAttr(foot_control, ln="kneeTwist", at="doubleAngle", k=1)
         foot_control.kneeTwist >> no_flip_group.ry
 
         # Non-uniform IK Leg Stretch
@@ -517,8 +611,8 @@ class Rig(Foot):
         knee_control.kneeSnap >> stretch_blend.blender
 
         # Global Scale
-        pv_scale = pm.createNode(
-            "multiplyDivide", n="globalScale_leftLegNormalize_DIV")
+        name = "globalScale_{}LegNormalize_DIV".format(side)
+        pv_scale = pm.createNode("multiplyDivide", n=name)
         pv_scale.operation.set(2)  # divide
 
         thigh_to_knee_length.distance >> pv_scale.input1X
