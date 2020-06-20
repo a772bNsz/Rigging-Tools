@@ -17,7 +17,7 @@ from collections import OrderedDict
 
 class Rig:
     def __init__(self, root):
-        self.controls = self.skin_joints = []
+        self.controls = []
 
         spine_chain = [root] + root.getChildren(ad=1)[::-1]
         i = 1
