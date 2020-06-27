@@ -2,243 +2,6 @@ import pymel.core as pm
 from collections import OrderedDict
 
 
-class Twist:
-    def __init__(self):
-        self.name = None
-
-        # create_chain()
-        self.chain = None
-        self.spline_curve = None
-
-        # ik_spline()
-        self.start_bind = None
-        self.end_bind = None
-        self.ik_handle = None
-
-    def rename_chain(self, name="#"):
-        num = len(self.chain)
-        for i in range(num):
-            self.chain[i].rename(str(i+1).join(name.split("#")))
-        return self.chain
-
-    def create_chain(self, start, end, number=5, name="#"):
-        chain = []
-        curve = pm.curve(d=1, p=[start, end], k=[0, 1])
-        pm.select(cl=1)
-        for i in range(number):
-            percent = i / (number - 1.0)
-            position = pm.pointOnCurve(curve, pr=percent, p=1, top=1)
-            chain += [pm.joint(p=position, a=1)]
-
-        self.chain = chain
-        self.rename_chain(name=name)
-        self.spline_curve = curve.rename(self.name + "_CRV")
-        return True
-
-    def ik_spline(self, oj="xyz", sao="ydown", upaxis=3, upv1=[0, 0, 1],
-                  upv2=[0, 0, 1]):
-        name = self.name
-        root_joint = self.chain[0]
-        end_joint = self.chain[-1]
-
-        # orient joint chain
-        pm.joint(root_joint, e=1, oj=oj, sao=sao, ch=1, zso=1)
-        end_joint.jointOrient.set(0, 0, 0)
-
-        # create ik spline handle
-        handle, effector, curve = None, None, self.spline_curve
-        if curve:
-            handle, effector = pm.ikHandle(n=name + "_HDL",
-                                           sj=root_joint,
-                                           ee=end_joint,
-                                           sol="ikSplineSolver",
-                                           c=curve,
-                                           ccv=0)
-        else:
-            handle, effector, curve = pm.ikHandle(n=name + "_HDL",
-                                                  sj=root_joint,
-                                                  ee=end_joint,
-                                                  sol="ikSplineSolver")
-            curve.rename(name + "_CRV")
-        effector.rename(name + "_EFF")
-        curve.inheritsTransform.set(0)
-
-        # skin bind joints to spline curve
-        start_bind, end_bind = self.start_bind, self.end_bind
-        if not start_bind:
-            start_bind = self.start_bind = pm.duplicate(root_joint, po=1)[0]
-        if not end_bind:
-            end_bind = self.end_bind = pm.duplicate(end_joint, un=0)[0]
-            pm.parent(end_bind, w=1)
-
-        pm.skinCluster(
-            start_bind, end_bind, curve, tsb=1, mi=2, n=name + "_SCL")
-
-        # ik spline handle advanced twist settings
-        handle.dTwistControlEnable.set(1)
-        handle.dWorldUpType.set(4)  # object rotation up (start/end)
-        handle.dWorldUpAxis.set(upaxis)  # 3 = +z; 1 = -y
-        handle.dWorldUpVector.set(upv1)
-        handle.dWorldUpVectorEnd.set(upv2)
-
-        start_bind.worldMatrix[0] >> handle.dWorldUpMatrix
-        end_bind.worldMatrix[0] >> handle.dWorldUpMatrixEnd
-
-        # update attributes
-        self.ik_handle = handle
-        self.spline_curve = curve
-        self.start_bind = start_bind
-        self.end_bind = end_bind
-        return
-
-
-class Stretch:
-    def __init__(self):
-        # ik() snap() inputs
-        self.chain = []
-
-        # ik() outputs
-        self.ik_handle = None
-        self.length_start = None
-        self.length_end = None
-
-        # snap() inputs
-        self.snap_dict = {}
-
-    @staticmethod
-    def fk(driver, driven, driver_attr="length", driven_attr="tx"):
-        pm.addAttr(driver, ln=driver_attr, at="float", k=1, min=0, dv=1)
-
-        driver = driver.attr(driver_attr)  # driver.length
-        driven = driven.attr(driven_attr)  # driven.tx
-
-        pm.setDrivenKeyframe(driven, cd=driver)
-        pm.setInfinity(driven, poi="linear")
-        pm.setDrivenKeyframe(driven, cd=driver, dv=0, v=0)
-        return True
-
-    def spline_curve(self, curve, driver_attr="sx", name=""):
-        chain = self.chain
-
-        curve_info = pm.arclen(curve, ch=1).rename(name + "Info")
-
-        normalize_div = pm.createNode("floatMath", n=name + "_normalize_DIV")
-        normalize_div.operation.set(3)  # divide
-        curve_info.arcLength >> normalize_div.floatA
-        normalize_div.floatB.set(curve_info.arcLength.get())
-
-        for jnt in chain:
-            normalize_div.outFloat >> jnt.attr(driver_attr)
-        return
-
-    def ik(self, name=""):
-        # upperarm, forearm, hand
-        # thigh, shin, foot
-        start, mid, end = self.chain
-
-        # RP solver
-        handle, effector = pm.ikHandle(sj=start, ee=end, sol="ikRPsolver")
-        handle.rename(name + "HDL")
-        effector.rename(name + "EFF")
-
-        # IK stretches and bends at default length
-        length_start = pm.spaceLocator(n=name + "_IK_lengthStart_LOC")
-        length_end = pm.spaceLocator(n=name + "_IK_lengthEnd_LOC")
-
-        pm.matchTransform(length_start, start, pos=1)
-        pm.matchTransform(length_end, end, pos=1)
-
-        length = pm.distanceDimension(
-            sp=length_start.worldPosition.get(),
-            ep=length_end.worldPosition.get()).getParent()
-        length.rename(name + "_IK_length")
-
-        limb1_length = mid.tx.get()
-        limb2_length = end.tx.get()
-        sum_length = limb1_length + limb2_length
-
-        # --- SDK for first limb
-        pm.setDrivenKeyframe(
-            mid.tx, cd=length.distance, dv=sum_length, v=limb1_length)
-        pm.setDrivenKeyframe(
-            mid.tx, cd=length.distance, dv=sum_length * 2, v=limb1_length * 2)
-        pm.setInfinity(mid.tx, poi="linear")
-
-        # --- SDK for second limb
-        pm.setDrivenKeyframe(
-            end.tx, cd=length.distance, dv=sum_length, v=limb2_length)
-        pm.setDrivenKeyframe(
-            end.tx, cd=length.distance, dv=sum_length * 2, v=limb2_length * 2)
-        pm.setInfinity(end.tx, poi="linear")
-
-        # cleanup
-        pm.hide(handle, length_start, length_end, length)
-
-        self.ik_handle = handle
-        self.length_start = length_start
-        self.length_end = length_end
-        return True
-
-    def snap(self):
-        snap_dict = self.snap_dict
-        handle = self.ik_handle  # arm / leg
-        snap_loc = pm.spaceLocator(n=snap_dict["snap_loc"])  # elbow / knee
-
-        snap_control = snap_dict["snap_control"]
-        pm.parent(snap_loc, snap_control, r=1)
-        pm.poleVectorConstraint(snap_loc, handle)
-
-        # upperarm, forearm, hand
-        # thigh, shin, foot
-        start, mid, end = self.chain
-
-        start_loc = pm.spaceLocator(n=snap_dict["start_loc"])
-        end_loc = pm.spaceLocator(n=snap_dict["end_loc"])
-
-        control = snap_dict["control"]
-        pm.matchTransform(start_loc, start, pos=1)
-        pm.matchTransform(end_loc, end, pos=1)
-        pm.parent(end_loc, control)
-
-        first_length = pm.distanceDimension(
-            sp=start_loc.worldPosition.get(),
-            ep=snap_loc.worldPosition.get()).getParent()
-        first_length.rename(snap_dict["first_length"])
-
-        second_length = pm.distanceDimension(
-            sp=snap_loc.worldPosition.get(),
-            ep=end_loc.worldPosition.get()).getParent()
-        second_length.rename(snap_dict["second_length"])
-
-        mid_sdk = mid.tx.inputs()[0]
-        end_sdk = end.tx.inputs()[0]
-
-        stretch_blend = \
-            pm.createNode("blendColors", n=snap_dict["stretch_blend"])
-
-        first_length.distance >> stretch_blend.color1R
-        mid_sdk.output >> stretch_blend.color2R
-        stretch_blend.outputR >> mid.tx
-
-        second_length.distance >> stretch_blend.color1G
-        end_sdk.output >> stretch_blend.color2G
-        stretch_blend.outputG >> end.tx
-
-        pm.addAttr(snap_control,
-                   ln=snap_dict["attr"], at="float", k=1, min=0, max=1)
-        snap_control.attr(snap_dict["attr"]) >> stretch_blend.blender
-
-        self.snap_dict = {
-            "snap_loc": snap_loc,
-            "start_loc": start_loc,
-            "end_loc": end_loc,
-            "first_length": first_length,
-            "second_length": second_length,
-            "stretch_blend": stretch_blend
-        }
-        return True
-
-
 class Rig:
     def __init__(self, root, side="", root_control=""):
         self.side = side
@@ -250,37 +13,32 @@ class Rig:
         self.controls = self._controls(
             side, self.result_chain, self.ik_chain, self.fk_chain)
 
+        self.twist_nodes = {}
+        self.stretch_and_bend_ik_nodes = {}
+        self.snap_nodes = {}
+
     @staticmethod
     def _joint_chains(root, side):
-        result_dict = OrderedDict({"upper": "upperArm_result_JNT"})
-        result_dict["lower"] = "foreArm_result_JNT"
-        result_dict["hand"] = "hand_result_JNT"
-        result_dict["end"] = "hand_end_result_JNT"
+        names = OrderedDict({"upper": "upperArm"})
+        names["lower"] = "foreArm"
+        names["hand"] = "hand"
+        names["end"] = "hand_end"
 
         result_chain = [root] + root.getChildren(ad=1)[::-1]
-
-        for (k, v), jnt in zip(result_dict.items(), result_chain):
-            name = v if "" == side else side + v[0].upper() + v[1:]
-            result_dict[k] = jnt.rename(name)
-
         pm.joint(result_chain[0], e=1, oj="xyz", sao="ydown", ch=1, zso=1)
         result_chain[-1].jointOrient.set(0, 0, 0)
 
-        ik_chain = pm.duplicate(result_chain)
-        fk_chain = pm.duplicate(result_chain)
-        for ik, fk in zip(ik_chain, fk_chain):
-            name = ik.replace("result", "IK")
-            ik.rename(name)
-            name = fk.replace("result", "FK")
-            fk.rename(name)
-        ik_chain[0].rename(ik_chain[0][:-1])
-        fk_chain[0].rename(fk_chain[0][:-1])
+        ik_chain, fk_chain = [pm.duplicate(result_chain) for i in range(2)]
 
-        ik_dict = OrderedDict()
-        fk_dict = OrderedDict()
-        for k, ik, fk in zip(result_dict.keys(), ik_chain, fk_chain):
-            ik_dict[k] = ik
-            fk_dict[k] = fk
+        result_dict, ik_dict, fk_dict = [OrderedDict() for i in range(3)]
+
+        for (k, v), r, ik, fk \
+                in zip(names.items(), result_chain, ik_chain, fk_chain):
+            name = v if "" == side else side + v[0].upper() + v[1:]
+
+            result_dict[k] = r.rename(name + "_result_JNT")
+            ik_dict[k] = ik.rename(name + "_IK_JNT")
+            fk_dict[k] = fk.rename(name + "_FK_JNT")
         return result_dict, ik_dict, fk_dict
 
     @staticmethod
@@ -333,66 +91,272 @@ class Rig:
             pm.parent(con, grp)
         return controls
 
+    @staticmethod
+    def create_twist_chain(curve, number=5, name="#"):
+        chain = []
+        for i in range(number):
+            percent = i / (number - 1.0)
+            position = pm.pointOnCurve(curve, pr=percent, p=1, top=1)
+            n = str(i + 1).join(name.split("#"))
+            chain += [pm.joint(p=position, a=1, n=n)]
+        chain[0].setParent(None)
+        return chain
+
+    @staticmethod
+    def ik_spline(oj, sao, up_axis, up_vectors, curve, chain, name="",
+                  start_bind=None, end_bind=None):
+        root, end = chain[0], chain[-1]
+
+        # orient chain
+        pm.joint(root, e=1, oj=oj, sao=sao, ch=1, zso=1)
+        end.jointOrient.set(0, 0, 0)
+
+        # IK spline handle
+        handle, effector = pm.ikHandle(n=name + "_HDL",
+                                       sj=root,
+                                       ee=end,
+                                       sol="ikSplineSolver",
+                                       c=curve,
+                                       ccv=0)
+        effector.rename(name + "_EFF")
+        curve.inheritsTransform.set(0)
+
+        # skin bind joints spline curve
+        if not start_bind:
+            start_bind = pm.duplicate(root, po=1)[0]
+        if not end_bind:
+            end_bind = pm.duplicate(end, un=0)[0]
+            end_bind.setParent(None)
+
+        pm.skinCluster(
+            start_bind, end_bind, curve, tsb=1, mi=2, n=name + "_SCL")
+
+        # advanced twist settings
+        upv1, upv2 = up_vectors
+
+        if not up_axis:
+            axis_direction = {
+                "down": "Positive",
+                "up": "Negative"
+            }
+
+            # Positive Z / Negative Y
+            enum = " ".join(axis_direction[sao[1:]], oj[-1]).title()
+
+            # spline handle up axis enum list
+            handle_up_axis_enums = pm.attributeQuery("dWorldUpAxis",
+                                                     node=handle,
+                                                     listEnum=1)[0].split(":")
+
+            # Positive Z = 3 / Negative Y = 1
+            up_axis = handle_up_axis_enums.index(enum)
+
+        handle.dTwistControlEnable.set(1)
+        handle.dWorldUpType.set(4)  # object rotation up (start/end)
+        handle.dWorldUpAxis.set(up_axis)
+        handle.dWorldUpVector.set(upv1)
+        handle.dWorldUpVectorEnd.set(upv2)
+
+        start_bind.worldMatrix[0] >> handle.dWorldUpMatrix
+        end_bind.worldMatrix[0] >> handle.dWorldUpMatrixEnd
+
+        # update class attributes
+        twist_nodes = {
+            "handle": handle,
+            "start_bind": start_bind,
+            "end_bind": end_bind,
+            "curve": curve,
+            "chain": chain
+        }
+        return twist_nodes
+
+    @staticmethod
+    def stretch_spline(curve, chain, driver_attr="sx", name=""):
+        curve_info = pm.arclen(curve, ch=1).rename(name + "Info")
+
+        normalize_div = pm.createNode("floatMath", n=name + "_normalize_DIV")
+        normalize_div.operation.set(3)  # divide
+        curve_info.arcLength >> normalize_div.floatA
+        normalize_div.floatB.set(curve_info.arcLength.get())
+
+        for jnt in chain:
+            normalize_div.outFloat >> jnt.attr(driver_attr)
+        return True
+
+    def _twist_upperarm(self):
+        side = self.side
+        name = side + "UpperArm"
+
+        # twist chain
+        start_point = self.result_chain["upper"].getTranslation(space="world")
+        end_point = self.result_chain["lower"].getTranslation(space="world")
+        curve = pm.curve(d=1,
+                         p=[start_point, end_point],
+                         k=[0, 1],
+                         n=name + "_CRV")
+        params = {
+            "curve": curve,
+            "name": name + "_seg#_JNT"
+        }
+        chain = self.create_twist_chain(**params)
+
+        # ik spline
+        params = {
+            "oj": "xyz",  # joint orientation
+            "sao": "ydown",  # secondary axis orientation
+            "up_axis": 3,  # +z
+            "up_vectors": [[0, 0, 1]] * 2,
+            "curve": curve,
+            "chain": chain,
+            "name": name,
+        }
+        twisted = self.ik_spline(**params)
+        start_bind = twisted["start_bind"]
+        end_bind = twisted["end_bind"]
+
+        start_bind.rename(side + "Arm_start_bind_JNT")
+        end_bind.rename(side + "Arm_mid_bind_JNT")
+
+        self.twist_nodes["upper"] = twisted
+
+        # stretch
+        params = {
+            "curve": curve,
+            "chain": chain,
+            "name": name
+        }
+        self.stretch_spline(**params)
+        return True
+
+    def _twist_lowerarm(self):
+        side = self.side
+        name = side + "ForeArm"
+
+        # twist chain
+        start_point = self.result_chain["lower"].getTranslation(space="world")
+        end_point = self.result_chain["hand"].getTranslation(space="world")
+        curve = pm.curve(d=1,
+                         p=[start_point, end_point],
+                         k=[0, 1],
+                         n=name + "_CRV")
+        params = {
+            "curve": curve,
+            "name": name + "_seg#_JNT"
+        }
+        chain = self.create_twist_chain(**params)
+
+        # ik spline
+        params = {
+            "oj": "xyz",  # joint orientation
+            "sao": "ydown",  # secondary axis orientation
+            "up_axis": 3,  # +z
+            "up_vectors": [[0, 0, 1]] * 2,
+            "curve": curve,
+            "chain": chain,
+            "start_bind": self.twist_nodes["upper"]["end_bind"],
+            "name": name,
+        }
+        twisted = self.ik_spline(**params)
+        start_bind = twisted["start_bind"]
+        end_bind = twisted["end_bind"]
+
+        end_bind.rename(side + "Arm_end_bind_JNT")
+
+        self.twist_nodes["lower"] = twisted
+
+        # stretch
+        params = {
+            "curve": curve,
+            "chain": chain,
+            "name": name
+        }
+        self.stretch_spline(**params)
+        return True
+
     def twist(self):
         side = self.side
         twist_group = pm.group(em=1, n=side + "Arm_twist_GRP")
+        self.twist_nodes["twist_group"] = twist_group
 
-        # upper arm
-        start = self.result_chain["upper"].getTranslation(space="world")
-        end = self.result_chain["lower"].getTranslation(space="world")
+        self._twist_upperarm()
+        self._twist_lowerarm()
 
-        upperarm = Twist()
-        upperarm.name = side + "UpperArm"
-        upperarm.create_chain(
-            start, end, number=5, name=side + "UpperArm_seg#_JNT")
+        start_bind = self.twist_nodes["upper"]["start_bind"]
+        mid_bind = self.twist_nodes["upper"]["end_bind"]
+        end_bind = self.twist_nodes["lower"]["end_bind"]
 
-        upperarm.ik_spline()
-        upperarm.start_bind.rename(side + "Arm_start_bind_JNT")
-        upperarm.end_bind.rename(side + "Arm_mid_bind_JNT")
+        pm.pointConstraint(self.result_chain["upper"], start_bind, mo=1)
+        pm.parentConstraint(self.result_chain["lower"], mid_bind, mo=1)
+        pm.parentConstraint(self.result_chain["hand"], end_bind, mo=1)
 
-        pm.hide(upperarm.start_bind, upperarm.end_bind)
+        pm.hide(start_bind, mid_bind, end_bind)
+        for k in ["upper", "lower"]:
+            pm.parent(self.twist_nodes[k]["curve"],
+                      self.twist_nodes[k]["handle"],
+                      twist_group)
+        return True
 
-        pm.pointConstraint(
-            self.result_chain["upper"], upperarm.start_bind, mo=1)
-        pm.parentConstraint(
-            self.result_chain["lower"], upperarm.end_bind, mo=1)
+    def ikfk_switch(self):
+        arm_settings = self.controls["arm_settings"]
+        result_chain, ik_chain, fk_chain = \
+            self.result_chain, self.ik_chain, self.fk_chain
 
-        pm.parent(upperarm.spline_curve, upperarm.ik_handle, twist_group)
+        names = OrderedDict({"upper": "upperArm"})
+        names["lower"] = "foreArm"
+        names["hand"] = "hand"
+        names["end"] = "hand_end"
 
-        upperarm_stretch = Stretch()
-        upperarm.chain = upperarm.chain[:-1]
-        curve = upperarm.spline_curve
-        name = upperarm.name
-        upperarm_stretch.spline_curve(curve, name=name)
+        pm.addAttr(arm_settings, ln="FK_IK_blend", nn="FK/IK Blend",
+                   at="float", k=1, min=0, max=1)
 
-        # lower arm
-        start = end
-        end = self.result_chain["hand"].getTranslation(space="world")
+        nodes = []
+        side = self.side
+        for k, v in names.items():
+            name = v if "" == side else side + v[0].upper() + v[1:]
+            name += "_IKFKChoice"
+            pair_blend = pm.createNode("pairBlend", n=name)
+            fk_chain[k].rotate >> pair_blend.inRotate1
+            ik_chain[k].rotate >> pair_blend.inRotate2
+            pair_blend.outRotate >> result_chain[k].rotate
 
-        lowerarm = Twist()
-        lowerarm.name = side + "ForeArm"
-        lowerarm.create_chain(
-            start, end, number=5, name=side + "ForeArm_seg#_JNT")
+            fk_chain[k].translate >> pair_blend.inTranslate1
+            ik_chain[k].translate >> pair_blend.inTranslate2
+            pair_blend.outTranslate >> result_chain[k].translate
 
-        lowerarm.start_bind = upperarm.end_bind
-        lowerarm.ik_spline()
-        lowerarm.end_bind.rename(side + "Arm_end_bind_JNT")
+            arm_settings.FK_IK_blend >> pair_blend.weight
+            nodes += [pair_blend]
 
-        pm.hide(lowerarm.start_bind, lowerarm.end_bind)
+        pm.addAttr(arm_settings, ln="IK_visibility", at="bool", k=0, h=1)
+        pm.addAttr(arm_settings, ln="FK_visibility", at="bool", k=0, h=1)
 
-        pm.parentConstraint(
-            self.result_chain["lower"], lowerarm.start_bind, mo=1)
-        pm.parentConstraint(
-            self.result_chain["hand"], lowerarm.end_bind, mo=1)
+        arm_settings.FK_visibility >> self.controls["upper"].getParent().v
+        arm_settings.IK_visibility >> self.controls["arm"].v
 
-        lowerarm_stretch = Stretch()
-        lowerarm.chain = lowerarm.chain[:-1]
-        curve = lowerarm.spline_curve
-        name = lowerarm.name
-        lowerarm_stretch.spline_curve(curve, name=name)
+        pm.setDrivenKeyframe(arm_settings.FK_visibility,
+                             cd=arm_settings.FK_IK_blend, dv=0.999, v=1,
+                             itt="linear", ott="linear")
+        pm.setDrivenKeyframe(arm_settings.FK_visibility,
+                             cd=arm_settings.FK_IK_blend, dv=1, v=0,
+                             itt="linear", ott="linear")
 
-        pm.parent(lowerarm.spline_curve, lowerarm.ik_handle, twist_group)
-        twist_group.hide()
+        pm.setDrivenKeyframe(arm_settings.IK_visibility,
+                             cd=arm_settings.FK_IK_blend, dv=0, v=0,
+                             itt="linear", ott="linear")
+        pm.setDrivenKeyframe(arm_settings.IK_visibility,
+                             cd=arm_settings.FK_IK_blend, dv=0.001, v=1,
+                             itt="linear", ott="linear")
+        return nodes
+
+    @staticmethod
+    def stretch_fk(driver, driven):
+        pm.addAttr(driver, ln="length", at="float", k=1, min=0, dv=1)
+
+        driven = driven.tx
+        driver = driver.length
+
+        pm.setDrivenKeyframe(driven, cd=driver)
+        pm.setInfinity(driven, poi="linear")
+        pm.setDrivenKeyframe(driven, cd=driver, dv=0, v=0)
         return True
 
     def fk(self):
@@ -410,184 +374,179 @@ class Rig:
             pm.parentConstraint(self.controls[k], self.fk_chain[k])
             parent = self.controls[k]
 
-        # upper arm
-        stretch = Stretch()
-        driver = self.controls["upper"]
-        driven = self.controls["lower"].getParent()
-        stretch.fk(driver, driven)
-
-        # fore arm
-        stretch = Stretch()
-        driver = self.controls["lower"]
-        driven = self.controls["hand"].getParent()
-        stretch.fk(driver, driven)
+        # SDK setup
+        for k in keys[:-1]:
+            driver = self.controls[k]
+            driven = driver.getChildren(type="transform")[0]
+            self.stretch_fk(driver, driven)
         return True
 
+    def stretch_and_bend_ik(self, name, joints=[], preferred_angle=[]):
+        # upperarm, forearm, hand
+        # thigh, shin, foot
+        start, mid, end = joints
+
+        if preferred_angle:
+            mid.r.set(preferred_angle)
+            mid.setPreferredAngles()
+            mid.r.set(0, 0, 0)
+
+        # RP solver
+        handle, effector = pm.ikHandle(sj=start, ee=end, sol="ikRPsolver")
+        handle.rename(name + "HDL")
+        effector.rename(name + "EFF")
+
+        # IK stretches and bends at default length
+        length_start = pm.spaceLocator(n=name + "_IK_lengthStart_LOC")
+        length_end = pm.spaceLocator(n=name + "_IK_lengthEnd_LOC")
+
+        pm.matchTransform(length_start, start, pos=1)
+        pm.matchTransform(length_end, end, pos=1)
+
+        length = pm.distanceDimension(
+            sp=length_start.worldPosition.get(),
+            ep=length_end.worldPosition.get()).getParent()
+        length.rename(name + "_IK_length")
+
+        limb1_length = mid.tx.get()
+        limb2_length = end.tx.get()
+        sum_length = limb1_length + limb2_length
+
+        # --- SDK for first limb
+        pm.setDrivenKeyframe(
+            mid.tx, cd=length.distance, dv=sum_length, v=limb1_length)
+        pm.setDrivenKeyframe(
+            mid.tx, cd=length.distance, dv=sum_length * 2, v=limb1_length * 2)
+        pm.setInfinity(mid.tx, poi="linear")
+
+        # --- SDK for second limb
+        pm.setDrivenKeyframe(
+            end.tx, cd=length.distance, dv=sum_length, v=limb2_length)
+        pm.setDrivenKeyframe(
+            end.tx, cd=length.distance, dv=sum_length * 2, v=limb2_length * 2)
+        pm.setInfinity(end.tx, poi="linear")
+
+        # cleanup
+        pm.hide(handle, length_start, length_end, length)
+
+        self.stretch_and_bend_ik_nodes = {
+            "handle": handle,
+            "length": length,
+            "length_start": length_start,
+            "length_end": length_end
+        }
+        return True
+
+    def snap(self, controls, locators, handle, joints, length, stretch_blend):
+        # pole vector constraint on IK rp handle for the elbow or knee
+        snap_control, control = controls["snap"], controls["main"]
+        snap_loc = pm.spaceLocator(n=locators["snap"])
+
+        pm.parent(snap_loc, snap_control, r=1)
+        pm.poleVectorConstraint(snap_loc, handle)
+
+        # get distance for thigh and shin or upper arm and fore arm
+        start, mid, end = joints
+        start_loc = pm.spaceLocator(n=locators["start"])
+        end_loc = pm.spaceLocator(n=locators["end"])
+
+        pm.matchTransform(start_loc, start, pos=1)
+        pm.matchTransform(end_loc, end, pos=1)
+        pm.parent(end_loc, control)
+
+        first_length = pm.distanceDimension(
+            sp=start_loc.worldPosition.get(),
+            ep=snap_loc.worldPosition.get()).getParent()
+        first_length.rename(length["first"])
+
+        second_length = pm.distanceDimension(
+            sp=snap_loc.worldPosition.get(),
+            ep=end_loc.worldPosition.get()).getParent()
+        second_length.rename(length["second"])
+
+        # blend between the set driven keys stretching and bending IK chain
+        # in stretch_and_bend_ik() and this snappable elbow/knee setup
+        mid_sdk = mid.tx.inputs()[0]
+        end_sdk = end.tx.inputs()[0]
+        stretch_blend = pm.createNode("blendColors", n=stretch_blend)
+
+        first_length.distance >> stretch_blend.color1R
+        mid_sdk.output >> stretch_blend.color2R
+        stretch_blend.outputR >> mid.tx
+
+        second_length.distance >> stretch_blend.color1G
+        end_sdk.output >> stretch_blend.color2G
+        stretch_blend.outputG >> end.tx
+
+        attr = controls["attr"]
+        pm.addAttr(snap_control, ln=attr, at="float", k=1, min=0, max=1)
+        snap_control.attr(attr) >> stretch_blend.blender
+
+        self.snap_nodes = {
+            "locators": {
+                "snap": snap_loc,
+                "start": start_loc,
+                "end": end_loc
+            },
+            "length": {
+                "first": first_length,
+                "second": second_length,
+            },
+            "stretch_blend": stretch_blend
+        }
+        return self.snap_nodes
+
     def ik(self):
-        arm = Stretch()
+        side = self.side
 
-        # STRETCH AND BEND IK
-        lowerarm = self.ik_chain["lower"]
-        lowerarm.ry.set(10)
-        lowerarm.setPreferredAngles()
-        lowerarm.ry.set(0)
+        # stretch and bend IK
+        params = {
+            "name": side + "Arm",
+            "joints": [v for v in self.ik_chain.values()[:-1]],
+            "preferred_angle": [0, 10, 0]
+        }
+        self.stretch_and_bend_ik(**params)
 
-        arm.chain = [v for v in self.ik_chain.values()[:-1]]  # no hand_end
-        arm.ik(name=self.side + "Arm")
-        pm.parent(arm.ik_handle, arm.length_end, self.controls["arm"])
+        handle = self.stretch_and_bend_ik_nodes["handle"]
+        length_end = self.stretch_and_bend_ik_nodes["length_end"]
+        arm_control = self.controls["arm"]
+        pm.parent(handle, length_end, arm_control)
+
+        stretch_and_bend_ik_nodes = self.stretch_and_bend_ik_nodes.values()
+        pm.hide(stretch_and_bend_ik_nodes)
 
         # SC solver for hand IK
         hand = self.ik_chain["hand"]
         end = self.ik_chain["end"]
-        handle, effector = pm.ikHandle(sj=hand, ee=end, sol="ikSCsolver")
-        handle.rename(self.side + "Hand_HDL")
-        effector.rename(self.side + "Hand_EFF")
-        pm.parent(handle, self.controls["arm"])
+        handle, effector = pm.ikHandle(sj=hand,
+                                       ee=end,
+                                       sol="ikSCsolver",
+                                       n=side + "Hand_HDL")
+        effector.rename(side + "Hand_EFF")
+        pm.parent(handle, arm_control)
 
-        # SNAPPABLE ELBOW
-        side = self.side
-        arm.snap_dict = {
-            "snap_control": self.controls["elbow"],
-            "attr": "elbowSnap",
-            "control": self.controls["arm"],
-            "snap_loc": side + "Elbow_LOC",
-            "start_loc": side + "UpperArm_to_elbowDistStart_LOC",
-            "end_loc": side + "Elbow_to_handDistEnd_LOC",
-            "first_length": side + "UpperArm_to_elbow_distance",
-            "second_length": side + "Elbow_to_hand_distance",
+        # snappable elbow
+        params = {
+            "controls": {
+                "snap": self.controls["elbow"],
+                "main": self.controls["arm"],
+                "attr": "elbowSnap"
+            },
+            "locators": {
+                "snap": side + "Elbow_LOC",
+                "start": side + "UpperArm_to_elbowDistStart_LOC",
+                "end": side + "Elbow_to_handDistEnd_LOC"
+            },
+            "joints": [v for v in self.ik_chain.values()[:-1]],
+            "length": {
+                "first": side + "UpperArm_to_elbow_distance",
+                "second": side + "Elbow_to_hand_distance"
+            },
+            "handle": handle,
             "stretch_blend": side + "Elbow_stretchChoice"
         }
-        arm.snap()
+        self.snap(**params)
 
-        # HYBRID ELBOW
-        self.hybrid_elbow()
-        return True
-
-    def hybrid_elbow(self):
-        elbow_control = self.controls["elbow"]
-
-        # HYBRID CONTROLS
-        hybrid_controls = OrderedDict()
-        parent = None
-        for k in ["lower", "hand"]:
-            v = self.ik_chain[k]
-
-            name = v.replace(self.side, self.side + "Elbow")
-            name = name.replace("JNT", "CON")
-            name = name.replace("IK", "FK")
-            con = pm.spaceLocator(n=name)
-            pm.matchTransform(con, v)
-
-            ofs, = pm.duplicate(con, n=name.replace("CON", "OFS"))
-            pm.delete(ofs.getShapes())
-            pm.parent(con, ofs)
-
-            pm.parent(ofs, parent)
-            parent = con
-
-            hybrid_controls[k] = con
-
-        pm.matchTransform(hybrid_controls["lower"].getParent(),
-                          elbow_control,
-                          pos=1)
-        pm.parent(hybrid_controls["lower"].getParent(), elbow_control)
-
-        # FK STRETCH ON HYBRID CONTROLS
-        stretch = Stretch()
-        driver = hybrid_controls["lower"]
-        driven = hybrid_controls["hand"].getParent()
-        stretch.fk(driver, driven)
-
-        # SWITCH BETWEEN IK ARM CONTROL AND FK HYBRID CONTROLS
-        elbow_control.elbowSnap.set(1)
-
-        ik_control = self.controls["arm"]
-        fk_control = hybrid_controls["hand"]
-
-        ik_const_grp = pm.group(em=1, n=self.side + "Arm_IKConst_GRP")
-        pm.matchTransform(ik_const_grp, ik_control, pos=1)
-        pm.matchTransform(ik_const_grp, fk_control, rot=1)
-
-        children = ik_control.getChildren(ad=1, type="transform")
-        pm.parent(children, ik_const_grp)
-
-        parent_constraint = pm.parentConstraint(ik_control, ik_const_grp, mo=1)
-        pm.parentConstraint(fk_control, ik_const_grp)
-
-        # SWITCH ATTRIBUTES
-        pm.addAttr(elbow_control,
-                   ln="FK_forearmBlend", k=1, at="float", min=0, max=1)
-        fk_control_root = hybrid_controls["lower"].getParent()
-
-        # --- IK arm control enabled
-        attr = parent_constraint.listAttr(st=ik_control + "W*")[0]
-        pm.setDrivenKeyframe(
-            attr,
-            cd=elbow_control.FK_forearmBlend,
-            dv=0,
-            v=1,
-            itt="linear",
-            ott="linear"
-        )
-        attr = parent_constraint.listAttr(st=fk_control + "W*")[0]
-        pm.setDrivenKeyframe(
-            attr,
-            cd=elbow_control.FK_forearmBlend,
-            dv=0,
-            v=0,
-            itt="linear",
-            ott="linear"
-        )
-        pm.setDrivenKeyframe(
-            ik_control.v,
-            cd=elbow_control.FK_forearmBlend,
-            dv=0,
-            v=1,
-            itt="linear",
-            ott="linear"
-        )
-        pm.setDrivenKeyframe(
-            fk_control_root.v,
-            cd=elbow_control.FK_forearmBlend,
-            dv=0,
-            v=0,
-            itt="linear",
-            ott="linear"
-        )
-
-        # --- FK hybrid controls enabled
-        attr = parent_constraint.listAttr(st=ik_control + "W*")[0]
-        pm.setDrivenKeyframe(
-            attr,
-            cd=elbow_control.FK_forearmBlend,
-            dv=1,
-            v=0,
-            itt="linear",
-            ott="linear"
-        )
-        attr = parent_constraint.listAttr(st=fk_control + "W*")[0]
-        pm.setDrivenKeyframe(
-            attr,
-            cd=elbow_control.FK_forearmBlend,
-            dv=1,
-            v=1,
-            itt="linear",
-            ott="linear"
-        )
-        pm.setDrivenKeyframe(
-            ik_control.v,
-            cd=elbow_control.FK_forearmBlend,
-            dv=1,
-            v=0,
-            itt="linear",
-            ott="linear"
-        )
-        pm.setDrivenKeyframe(
-            fk_control_root.v,
-            cd=elbow_control.FK_forearmBlend,
-            dv=0.001,
-            v=1,
-            itt="linear",
-            ott="linear"
-        )
+        for k in ["locators", "length"]:
+            pm.hide(self.snap_nodes[k].values())
         return True
