@@ -16,6 +16,7 @@ class Rig:
         self.twist_nodes = {}
         self.stretch_and_bend_ik_nodes = {}
         self.snap_nodes = {}
+        self.hybrid_elbow_nodes = {}
 
     @staticmethod
     def _joint_chains(root, side):
@@ -496,6 +497,193 @@ class Rig:
         }
         return self.snap_nodes
 
+    def hybrid_elbow(self):
+        side = self.side
+
+        # controls and their offsets
+        hybrid_controls = OrderedDict()
+        parent = None
+        for k in ["lower", "hand"]:
+            v = self.fk_chain[k]
+
+            name = v.replace(side, side + "Elbow")
+            name = name.replace("JNT", "CON")
+            name = name.replace("IK", "FK")
+            con = pm.spaceLocator(n=name)
+            pm.matchTransform(con, v)
+
+            ofs, = pm.duplicate(con, n=name.replace("CON", "OFS"))
+            pm.delete(ofs.getShapes())
+            pm.parent(con, ofs)
+
+            pm.parent(ofs, parent)
+            parent = con
+
+            hybrid_controls[k] = con
+
+        elbow_control = self.controls["elbow"]
+        fk_control_root = hybrid_controls["lower"].getParent()
+
+        pm.parent(fk_control_root, elbow_control)
+        fk_control_root.t.set(0, 0, 0)
+
+        # FK stretch on forearm control
+        driver = hybrid_controls["lower"]
+        driven = hybrid_controls["hand"].getParent()
+        self.stretch_fk(driver, driven)
+
+        # blend between IK/FK with parent constraint and constrain group
+        ik_const_grp = pm.group(em=1, n=side + "Arm_IKConst_GRP")
+        arm_control = self.controls["arm"]
+        elbow_hand_control = hybrid_controls["hand"]
+
+        pm.matchTransform(ik_const_grp, arm_control, pos=1)
+        pm.matchTransform(ik_const_grp, elbow_hand_control, rot=1)
+
+        children = arm_control.getChildren(ad=1, type="transform")
+        pm.parent(children, ik_const_grp)
+
+        parent_constraint = \
+            pm.parentConstraint(arm_control, ik_const_grp, mo=1)
+        pm.parentConstraint(elbow_hand_control, ik_const_grp)
+
+        # update visibility connections on arm control
+        pm.addAttr(elbow_control,
+                   ln="forearm_FK_visibility", k=1, at="bool")
+        hybrid_fk_visibility = hybrid_controls["lower"].getParent().v
+        elbow_control.forearm_FK_visibility >> hybrid_fk_visibility
+        
+        ik_vis_grp = pm.group(em=1, n=side + "Arm_IK_vis_GRP")
+        pm.matchTransform(ik_vis_grp, arm_control)
+        pm.parent(arm_control, ik_vis_grp)
+        
+        settings_control = self.controls["arm_settings"]
+        settings_control.IK_visibility >> ik_vis_grp.v
+        settings_control.IK_visibility // arm_control.v
+        
+        # SDK for arm settings' FK/IK Blend
+        pm.setDrivenKeyframe(
+            elbow_control.v,
+            cd=settings_control.FK_IK_blend,
+            dv=0,
+            v=0,
+            itt="linear",
+            ott="linear"
+        )
+        pm.setDrivenKeyframe(
+            elbow_control.v,
+            cd=settings_control.FK_IK_blend,
+            dv=0.001,
+            v=1,
+            itt="linear",
+            ott="linear"
+        )
+        
+        # SDK for elbow control's FK Forearm Blend
+        pm.addAttr(elbow_control,
+                   ln="FK_forearmBlend", k=1, at="float", min=0, max=1)
+
+        # --- FK Forearm Blend = 0
+        # left arm control = 1
+        # left elbow hand control = 0
+        # .forearm_FK_visibility = 0
+        attr = parent_constraint.listAttr(st=arm_control + "W*")[0]
+        pm.setDrivenKeyframe(
+            attr,
+            cd=elbow_control.FK_forearmBlend,
+            dv=0,
+            v=1,
+            itt="linear",
+            ott="linear"
+        )
+        attr = parent_constraint.listAttr(st=elbow_hand_control + "W*")[0]
+        pm.setDrivenKeyframe(
+            attr,
+            cd=elbow_control.FK_forearmBlend,
+            dv=0,
+            v=0,
+            itt="linear",
+            ott="linear"
+        )
+        pm.setDrivenKeyframe(
+            elbow_control.forearm_FK_visibility,
+            cd=elbow_control.FK_forearmBlend,
+            dv=0,
+            v=0,
+            itt="linear",
+            ott="linear"
+        )
+
+        # --- FK Forearm Blend = 0.001
+        # .forearm_FK_visibility = 1
+        pm.setDrivenKeyframe(
+            elbow_control.forearm_FK_visibility,
+            cd=elbow_control.FK_forearmBlend,
+            dv=0.001,
+            v=1,
+            itt="linear",
+            ott="linear"
+        )
+
+        # --- FK Forearm Blend = 0.999
+        # left arm control visibility = 1
+        pm.setDrivenKeyframe(
+            arm_control.v,
+            cd=elbow_control.FK_forearmBlend,
+            dv=0.999,
+            v=1,
+            itt="linear",
+            ott="linear"
+        )
+
+        # --- FK Forearm Blend = 1
+        # left arm control = 0
+        # left elbow hand control = 1
+        # left arm control visibility = 0
+        attr = parent_constraint.listAttr(st=arm_control + "W*")[0]
+        pm.setDrivenKeyframe(
+            attr,
+            cd=elbow_control.FK_forearmBlend,
+            dv=1,
+            v=0,
+            itt="linear",
+            ott="linear"
+        )
+        attr = parent_constraint.listAttr(st=elbow_hand_control + "W*")[0]
+        pm.setDrivenKeyframe(
+            attr,
+            cd=elbow_control.FK_forearmBlend,
+            dv=1,
+            v=1,
+            itt="linear",
+            ott="linear"
+        )
+        pm.setDrivenKeyframe(
+            arm_control.v,
+            cd=elbow_control.FK_forearmBlend,
+            dv=1,
+            v=0,
+            itt="linear",
+            ott="linear"
+        )
+        
+        # cleanup
+        elbow_control.v.setLocked(1)
+        elbow_control.v.setKeyable(1)
+        
+        i = ik_const_grp
+        for at in "trs":
+            for ax in "xyz":
+                pm.setAttr(i.attr(at + ax), lock=1, keyable=0)
+        pm.setAttr(i + ".v", lock=1, keyable=0)
+        
+        self.hybrid_elbow_nodes = {
+            "ik_const": ik_const_grp,
+            "ik_vis": ik_vis_grp
+        }
+        self.hybrid_elbow_nodes.update(hybrid_controls)
+        return True
+
     def ik(self):
         side = self.side
 
@@ -549,4 +737,6 @@ class Rig:
 
         for k in ["locators", "length"]:
             pm.hide(self.snap_nodes[k].values())
+
+        self.hybrid_elbow()
         return True

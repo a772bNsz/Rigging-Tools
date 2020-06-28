@@ -1,6 +1,5 @@
 import unittest
 import pymel.core as pm
-from collections import OrderedDict
 from tools.arm import Rig
 
 
@@ -65,7 +64,7 @@ class TestArm(unittest.TestCase):
             "oj": "xyz",  # joint orientation
             "sao": "ydown",  # secondary axis orientation
             "up_axis": 3,  # +z
-            "up_vectors": [[0, 0, 1]]*2,
+            "up_vectors": [[0, 0, 1]] * 2,
             "curve": curve,
             "chain": chain,
             "name": name,
@@ -98,7 +97,7 @@ class TestArm(unittest.TestCase):
             "oj": "xyz",  # joint orientation
             "sao": "ydown",  # secondary axis orientation
             "up_axis": 3,  # +z
-            "up_vectors": [[0, 0, 1]]*2,
+            "up_vectors": [[0, 0, 1]] * 2,
             "curve": curve,
             "chain": chain,
             "name": name,
@@ -158,7 +157,7 @@ class TestArm(unittest.TestCase):
         self.assertTrue(arm.stretch_and_bend_ik_nodes,
                         "failed to stretch and bend IK rp solver arm")
 
-    # @unittest.skip("")
+    @unittest.skip("")
     def test_elbow_snap(self):
         arm = self.arm
         side = arm.side
@@ -206,6 +205,58 @@ class TestArm(unittest.TestCase):
 
         self.assertTrue(arm.snap_nodes,
                         "snappable elbow failed")
+
+    @unittest.skip("")
+    def test_hybrid_elbow(self):
+        arm = self.arm
+        side = arm.side
+
+        arm.ikfk_switch()
+
+        # get IK handle
+        params = {
+            "name": side + "Arm",
+            "joints": [v for v in arm.ik_chain.values()[:-1]],
+            "preferred_angle": [0, 10, 0]
+        }
+        arm.stretch_and_bend_ik(**params)
+
+        handle = arm.stretch_and_bend_ik_nodes["handle"]
+        length_end = arm.stretch_and_bend_ik_nodes["length_end"]
+        arm_control = arm.controls["arm"]
+        stretch_and_bend_ik_nodes = arm.stretch_and_bend_ik_nodes.values()
+
+        pm.parent(handle, length_end, arm_control)
+        pm.hide(stretch_and_bend_ik_nodes)
+
+        # snappable elbow
+        params = {
+            "controls": {
+                "snap": arm.controls["elbow"],
+                "main": arm.controls["arm"],
+                "attr": "elbowSnap"
+            },
+            "locators": {
+                "snap": side + "Elbow_LOC",
+                "start": side + "UpperArm_to_elbowDistStart_LOC",
+                "end": side + "Elbow_to_handDistEnd_LOC"
+            },
+            "joints": [v for v in arm.ik_chain.values()[:-1]],
+            "length": {
+                "first": side + "UpperArm_to_elbow_distance",
+                "second": side + "Elbow_to_hand_distance"
+            },
+            "handle": handle,
+            "stretch_blend": side + "Elbow_stretchChoice"
+        }
+        arm.snap(**params)
+
+        for k in ["locators", "length"]:
+            pm.hide(arm.snap_nodes[k].values())
+
+        arm.hybrid_elbow()
+        self.assertTrue(arm.hybrid_elbow_nodes,
+                        "hybrid elbow failed")
 
     @classmethod
     def tearDownClass(cls):
