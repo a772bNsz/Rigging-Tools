@@ -382,20 +382,10 @@ class Rig:
             self.stretch_fk(driver, driven)
         return True
 
-    def stretch_and_bend_ik(self, name, joints=[], preferred_angle=[]):
+    def stretch_and_bend_ik(self, name, handle, joints=[]):
         # upperarm, forearm, hand
         # thigh, shin, foot
         start, mid, end = joints
-
-        if preferred_angle:
-            mid.r.set(preferred_angle)
-            mid.setPreferredAngles()
-            mid.r.set(0, 0, 0)
-
-        # RP solver
-        handle, effector = pm.ikHandle(sj=start, ee=end, sol="ikRPsolver")
-        handle.rename(name + "HDL")
-        effector.rename(name + "EFF")
 
         # IK stretches and bends at default length
         length_start = pm.spaceLocator(n=name + "_IK_lengthStart_LOC")
@@ -686,12 +676,24 @@ class Rig:
 
     def ik(self):
         side = self.side
+        name = side + "Arm"
+
+        # RP solver
+        start, mid, end = [v for v in self.ik_chain.values()[:-1]]
+
+        mid.r.set([0, 10, 0])
+        mid.setPreferredAngles()
+        mid.r.set(0, 0, 0)
+
+        handle, effector = pm.ikHandle(sj=start, ee=end, sol="ikRPsolver")
+        handle.rename(name + "HDL")
+        effector.rename(name + "EFF")
 
         # stretch and bend IK
         params = {
-            "name": side + "Arm",
-            "joints": [v for v in self.ik_chain.values()[:-1]],
-            "preferred_angle": [0, 10, 0]
+            "name": name,
+            "joints": [start, mid, end],
+            "handle": handle
         }
         self.stretch_and_bend_ik(**params)
 

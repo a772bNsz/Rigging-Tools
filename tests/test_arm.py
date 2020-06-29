@@ -1,6 +1,7 @@
 import unittest
 import pymel.core as pm
 from tools.arm import Rig
+from tools.shoulder import Rig as ShoulderRig
 
 
 class TestArm(unittest.TestCase):
@@ -139,11 +140,24 @@ class TestArm(unittest.TestCase):
     def test_stretch_and_bend_ik(self):
         arm = self.arm
         side = arm.side
+        name = side + "Arm"
 
+        # RP solver
+        start, mid, end = [v for v in arm.ik_chain.values()[:-1]]
+
+        mid.r.set([0, 10, 0])
+        mid.setPreferredAngles()
+        mid.r.set(0, 0, 0)
+
+        handle, effector = pm.ikHandle(sj=start, ee=end, sol="ikRPsolver")
+        handle.rename(name + "HDL")
+        effector.rename(name + "EFF")
+
+        # stretch and bend IK
         params = {
-            "name": side + "Arm",
-            "joints": [v for v in arm.ik_chain.values()[:-1]],
-            "preferred_angle": [0, 10, 0]
+            "name": name,
+            "joints": [start, mid, end],
+            "handle": handle
         }
         arm.stretch_and_bend_ik(**params)
 
@@ -161,12 +175,24 @@ class TestArm(unittest.TestCase):
     def test_elbow_snap(self):
         arm = self.arm
         side = arm.side
+        name = side + "Arm"
 
-        # get IK handle
+        # RP solver
+        start, mid, end = [v for v in arm.ik_chain.values()[:-1]]
+
+        mid.r.set([0, 10, 0])
+        mid.setPreferredAngles()
+        mid.r.set(0, 0, 0)
+
+        handle, effector = pm.ikHandle(sj=start, ee=end, sol="ikRPsolver")
+        handle.rename(name + "HDL")
+        effector.rename(name + "EFF")
+
+        # stretch and bend IK
         params = {
-            "name": side + "Arm",
-            "joints": [v for v in arm.ik_chain.values()[:-1]],
-            "preferred_angle": [0, 10, 0]
+            "name": name,
+            "joints": [start, mid, end],
+            "handle": handle
         }
         arm.stretch_and_bend_ik(**params)
 
@@ -210,14 +236,26 @@ class TestArm(unittest.TestCase):
     def test_hybrid_elbow(self):
         arm = self.arm
         side = arm.side
+        name = side + "Arm"
 
         arm.ikfk_switch()
 
-        # get IK handle
+        # RP solver
+        start, mid, end = [v for v in arm.ik_chain.values()[:-1]]
+
+        mid.r.set([0, 10, 0])
+        mid.setPreferredAngles()
+        mid.r.set(0, 0, 0)
+
+        handle, effector = pm.ikHandle(sj=start, ee=end, sol="ikRPsolver")
+        handle.rename(name + "HDL")
+        effector.rename(name + "EFF")
+
+        # stretch and bend IK
         params = {
-            "name": side + "Arm",
-            "joints": [v for v in arm.ik_chain.values()[:-1]],
-            "preferred_angle": [0, 10, 0]
+            "name": name,
+            "joints": [start, mid, end],
+            "handle": handle
         }
         arm.stretch_and_bend_ik(**params)
 
@@ -271,6 +309,35 @@ class TestArm(unittest.TestCase):
         print ">>>>> TEARDOWN"
 
 
+class TestShoulderArmConnection(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        print ">>>>> SETUP"
+
+    def setUp(self):
+        pm.newFile(f=1)
+
+        root = pm.joint(p=[8.91, 142.2, 0.97])
+        pm.joint(p=[17.19, 138.49, 0.93])
+
+        self.shoulder = ShoulderRig(root, side="left")
+        self.shoulder.ik()
+
+        root = pm.joint(p=[17.19, 138.49, 0.94], a=1)
+        pm.joint(p=[40.69, 138.49, 1.44], a=1)
+        pm.joint(p=[68.17, 138.49, 2.02], a=1)
+        pm.joint(p=[75.66, 138.49, 2.18], a=1)
+
+        self.arm = Rig(root, side="left")
+        self.arm.ikfk_switch()
+        self.arm.fk()
+        self.arm.ik()
+
+    @classmethod
+    def tearDownClass(cls):
+        print ">>>>> TEARDOWN"
+
+
 class TestBothArms(TestArm):
     @classmethod
     def setUpClass(cls):
@@ -291,6 +358,6 @@ if __name__ == "__main__":
 
     # unittest.main(verbosity=3, failfast=1)
 
-    test_case = TestArm
+    test_case = TestShoulderArmConnection
     suite = unittest.TestLoader().loadTestsFromTestCase(test_case)
     runner = unittest.TextTestRunner(verbosity=3, failfast=1).run(suite)
