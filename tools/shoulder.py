@@ -3,8 +3,9 @@ from collections import OrderedDict
 
 
 class Rig:
-    def __init__(self, root, side=""):
+    def __init__(self, root, side="", root_control=""):
         self.side = side
+        self.root_control = root_control
 
         self.result_chain = OrderedDict({"root": root})
         self.result_chain["end"] = root.getChildren(type="joint")[0]
@@ -12,9 +13,20 @@ class Rig:
         self.result_chain["root"].rename(side + "ShoulderBase_result_JNT")
         self.result_chain["end"].rename(side + "ShoulderEnd_result_JNT")
 
+        self.groups = self._groups(side)
         self.controls = self._controls()
         self.ik_nodes = {}
         self.stretch_ik_nodes = {}
+        self.connect_nodes = {}
+
+    def _groups(self, side):
+        groups = OrderedDict(
+            {"shoulder": pm.group(em=1, n=side + "Shoulder_GRP")})
+        groups["dont_touch"] = pm.group(em=1, n="dontTouch_GRP")
+
+        pm.parent(groups["dont_touch"], groups["shoulder"])
+        pm.parent(self.result_chain["root"], groups["dont_touch"])
+        return groups
 
     def _controls(self, translate=1, rotate=0):
         side = self.side
@@ -37,6 +49,8 @@ class Rig:
         for at in "rs":
             for ax in "xyz":
                 pm.setAttr(i.attr(at + ax), lock=1, keyable=0)
+
+        pm.parent(controls["shoulder"].getParent(), self.groups["shoulder"])
         return controls
 
     def stretch_ik(self, handle, start, end, name):
@@ -52,10 +66,10 @@ class Rig:
             ep=length_end.worldPosition.get()).getParent()
         length.rename(name + "_IK_length")
 
+        # SDK
         natural_length = end.tx.get()
         distance_length = length.distance.get()
 
-        # --- SDK
         pm.setDrivenKeyframe(end.tx,
                              cd=length.distance,
                              dv=distance_length,
@@ -66,14 +80,27 @@ class Rig:
                              v=natural_length * 2)
         pm.setInfinity(end.tx, poi="linear")
 
+        # global scale
+        n = "_".join(["globalScale", name, "normalize_DIV"])
+        global_scale = pm.createNode("floatMath", n=n)
+        global_scale.operation.set(3)
+
+        end_sdk = end.tx.inputs()[0]
+        length.distance >> global_scale.floatA
+        self.root_control.sx >> global_scale.floatB
+        global_scale.outFloat >> end_sdk.input
+
         # cleanup
         pm.hide(handle, length_start, length_end, length)
 
         self.stretch_ik_nodes = {
             "length": length,
             "length_start": length_start,
-            "length_end": length_end
+            "length_end": length_end,
+            "globalScale": global_scale
         }
+
+        pm.parent(length, length_start, self.groups["dont_touch"])
         return self.stretch_ik_nodes
 
     def ik(self):
@@ -102,3 +129,21 @@ class Rig:
         self.stretch_ik(handle, start, end, name)
         self.stretch_ik_nodes["length_end"].setParent(locator)
         return self.ik_nodes
+
+    def connect(self, name="shoulder", control=None):
+        n = name if "" == self.side else self.side + "Shoulder"
+        const_loc = pm.spaceLocator(n=n + "_const_LOC")
+
+        pm.matchTransform(const_loc, self.controls[name])
+        constraint_node = \
+            pm.parentConstraint(const_loc, self.groups[name], mo=1)
+
+        pm.parent(const_loc, control)
+        const_loc.hide()
+        pm.select(cl=1)
+
+        self.connect_nodes = {
+            "abstraction_locator": const_loc,
+            "parent_constraint": constraint_node
+        }
+        return self.connect_nodes

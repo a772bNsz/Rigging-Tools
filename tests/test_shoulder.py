@@ -14,7 +14,9 @@ class TestShoulder(unittest.TestCase):
         root = pm.joint(p=[8.91, 142.2, 0.97])
         pm.joint(p=[17.19, 138.49, 0.93])
 
-        self.shoulder = Rig(root, side="left")
+        root_con = pm.spaceLocator(n="root_transform_CON")
+
+        self.shoulder = Rig(root, side="left", root_control=root_con)
 
     @unittest.skip("")
     def test_stretch_ik(self):
@@ -42,13 +44,24 @@ class TestShoulder(unittest.TestCase):
         self.assertTrue(shoulder.stretch_ik_nodes,
                         "stretch IK failed")
         
-    # @unittest.skip("")
+    @unittest.skip("")
     def test_ik(self):
         shoulder = self.shoulder
 
         shoulder.ik()
         self.assertTrue(shoulder.ik_nodes,
                         "shoulder IK failed")
+
+    @unittest.skip("")
+    def test_connect(self):
+        control = pm.spaceLocator(n="chest_CON")
+        control.t.set(0.0, 139.22, 0.7)
+
+        shoulder = self.shoulder
+        shoulder.ik()
+        shoulder.connect(control=control)
+        self.assertTrue(shoulder.connect_nodes,
+                        "connection failed")
 
     @classmethod
     def tearDownClass(cls):
