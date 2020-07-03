@@ -12,12 +12,44 @@ class TestArm(unittest.TestCase):
     def setUp(self):
         pm.newFile(f=1)
 
+        self.controls = ["leftShoulder_CON", "body_CON", "root_transform_CON"]
+
+        parent = None
+        for con in self.controls[::-1]:
+            con = pm.spaceLocator(n=con)
+            con.setParent(parent)
+            parent = con
+
+        self.controls[0].t.set([17.19, 138.49, 0.93])
+        self.controls[1].t.set([0.0, 91.23, -0.45])
+
         root = pm.joint(p=[17.19, 138.49, 0.94], a=1)
         pm.joint(p=[40.69, 138.49, 1.44], a=1)
         pm.joint(p=[68.17, 138.49, 2.02], a=1)
         pm.joint(p=[75.66, 138.49, 2.18], a=1)
 
-        self.arm = Rig(root, side="left")
+        root_con = self.controls[-1]
+
+        self.arm = Rig(root, side="left", root_control=root_con)
+
+    @unittest.skip("")
+    def test_arm_with_twist(self):
+        arm = self.arm
+        arm.twist()
+        arm.ikfk_switch()
+        arm.fk()
+        arm.ik()
+        arm.connect()
+        self.assertTrue(len(arm.controls) == 9,
+                        "arm rig with failed")
+
+    def test_connect(self):
+        arm = self.arm
+        controls = self.controls
+        # ["leftShoulder_CON", "body_CON", "root_transform_CON"]
+        spaces = arm.connect(controls)
+        self.assertTrue(spaces,
+                        "connection failed")
 
     @unittest.skip("")
     def test_ikfk_switch(self):
@@ -111,7 +143,8 @@ class TestArm(unittest.TestCase):
         params = {
             "curve": curve,
             "chain": chain,
-            "name": name
+            "control": arm.root_control.sx,
+            "name": name,
         }
         stretched = arm.stretch_spline(**params)
         self.assertTrue(stretched,
@@ -296,6 +329,15 @@ class TestArm(unittest.TestCase):
         self.assertTrue(arm.hybrid_elbow_nodes,
                         "hybrid elbow failed")
 
+    @unittest.skip("")
+    def test_ik(self):
+        arm = self.arm
+
+        arm.ikfk_switch()
+        ik_controls = arm.ik()
+        self.assertTrue(ik_controls,
+                        "ik set up failed")
+
     @classmethod
     def tearDownClass(cls):
         try:
@@ -333,6 +375,14 @@ class TestShoulderArmConnection(unittest.TestCase):
         self.arm.fk()
         self.arm.ik()
 
+    def test_connect(self):
+        control = pm.spaceLocator(n="chest_CON")
+        control.t.set(0.0, 139.22, 0.7)
+
+        self.arm.connect(control)
+        self.assertIsNone("Done",
+                          "connection failed")
+
     @classmethod
     def tearDownClass(cls):
         print ">>>>> TEARDOWN"
@@ -358,6 +408,6 @@ if __name__ == "__main__":
 
     # unittest.main(verbosity=3, failfast=1)
 
-    test_case = TestShoulderArmConnection
+    test_case = TestArm
     suite = unittest.TestLoader().loadTestsFromTestCase(test_case)
     runner = unittest.TextTestRunner(verbosity=3, failfast=1).run(suite)

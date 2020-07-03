@@ -10,6 +10,7 @@ class Rig:
         self.result_chain, self.ik_chain, self.fk_chain = \
             self._joint_chains(root, side)
 
+        self.groups = self._groups(side)
         self.controls = self._controls(
             side, self.result_chain, self.ik_chain, self.fk_chain)
 
@@ -42,12 +43,70 @@ class Rig:
             fk_dict[k] = fk.rename(name + "_FK_JNT")
         return result_dict, ik_dict, fk_dict
 
+    def _groups(self, side):
+        groups = OrderedDict(
+            {"arm": pm.group(em=1, n=side + "Arm_GRP")})
+        pm.parent(groups["arm"], self.root_control)
+
+        groups["dont_touch"] = pm.group(em=1, n="dontTouch_GRP")
+        pm.parent(groups["dont_touch"], groups["arm"])
+
+        root_pivot = self.result_chain["upper"].getTranslation(ws=1)
+
+        # example: leftArm_IKConst_GRP
+        name = "arm" if "" == side else side + "Arm"
+
+        for k in ["result", "IK", "FK"]:
+            grp = pm.group(em=1, n=name + "_{}Const_GRP".format(k))
+
+            if k == "FK":
+                grp.setParent(groups["arm"])
+            else:
+                grp.setParent(groups["dont_touch"])
+            groups[k.lower()] = grp  # groups["ik"]
+
+        grp = pm.group(em=1, n=name + "Base_IKConst_GRP")
+        grp.setParent(groups["dont_touch"])
+        groups["base_ik"] = grp
+
+        # for k in ["result", "IK", "FK"]:
+        #     grp = pm.group(em=1, n=name + "_{}Const_GRP".format(k))
+        #     if k != "IK":
+        #         grp.setPivots(root_pivot, ws=1)
+        #
+        #     if k == "FK":
+        #         grp.setParent(groups["arm"])
+        #     else:
+        #         grp.setParent(groups["dont_touch"])
+        #     groups[k.lower()] = grp  # groups["ik"]
+        #
+        # grp = pm.group(em=1, n=name + "Base_IKConst_GRP")
+        # grp.setPivots(root_pivot, ws=1)
+        # grp.setParent(groups["dont_touch"])
+        # groups["base_ik"] = grp
+
+        items = [groups["arm"], groups["dont_touch"]]
+        for i in items:
+            for at in "trs":
+                for ax in "xyz":
+                    pm.setAttr(i.attr(at + ax), lock=1, keyable=0)
+            pm.setAttr(i.v, lock=0, keyable=0, cb=1)
+        return groups
+
     @staticmethod
     def _controls(side, result_chain, ik_chain, fk_chain):
         arm_settings = pm.spaceLocator(n=side + "Arm_settings_CON")
         pm.matchTransform(arm_settings, result_chain["hand"], pos=1)
         pm.parentConstraint(result_chain["hand"], arm_settings, mo=1)
+        pm.scaleConstraint(result_chain["hand"], arm_settings)
         controls = OrderedDict({"arm_settings": arm_settings})
+
+        # leftArm_gimbal_corr_CON
+        name = "arm_gimbal_corr_CON" if "" == side \
+            else side + "Arm_gimbal_corr_CON"
+        gimbal_ik = pm.spaceLocator(n=name)
+        pm.matchTransform(gimbal_ik, fk_chain["upper"])
+        controls["gimbal"] = gimbal_ik
 
         # leftUpperArm_FK_CON
         upper_fk = pm.spaceLocator(n=fk_chain["upper"].replace("JNT", "CON"))
@@ -83,8 +142,13 @@ class Rig:
         if pm.objExists("settings_GRP"):
             pm.parent(arm_settings, "settings_GRP")
         else:
-            pm.group(n="settings_GRP", em=1)
-            pm.parent(arm_settings, "settings_GRP")
+            grp = pm.group(n="settings_GRP", em=1)
+            pm.parent(arm_settings, grp)
+
+            for at in "trs":
+                for ax in "xyz":
+                    pm.setAttr(grp.attr(at + ax), lock=1, keyable=0)
+            pm.setAttr(grp.v, lock=0, keyable=0, cb=1)
 
         for con in controls.values()[1:-2]:
             grp = pm.duplicate(con, n=con.replace("CON", "OFS"))[0]
@@ -172,16 +236,52 @@ class Rig:
         return twist_nodes
 
     @staticmethod
-    def stretch_spline(curve, chain, driver_attr="sx", name=""):
+    def stretch_spline(curve, chain, control, name="", squash=0):
         curve_info = pm.arclen(curve, ch=1).rename(name + "Info")
 
-        normalize_div = pm.createNode("floatMath", n=name + "_normalize_DIV")
-        normalize_div.operation.set(3)  # divide
-        curve_info.arcLength >> normalize_div.floatA
-        normalize_div.floatB.set(curve_info.arcLength.get())
+        n = "globalScale_" + name + "Normalize_DIV"
+        global_scale = pm.createNode("floatMath", n=n)
+        global_scale.operation.set(3)  # divide
+
+        curve_info.arcLength >> global_scale.floatA
+        control >> global_scale.floatB
+
+        n = name + "_stretchPercent_DIV"
+        stretch_percent = pm.createNode("floatMath", n=n)
+        stretch_percent.operation.set(3)  # divide
+
+        global_scale.outFloat >> stretch_percent.floatA
+        stretch_percent.floatB.set(curve_info.arcLength.get())
 
         for jnt in chain:
-            normalize_div.outFloat >> jnt.attr(driver_attr)
+            stretch_percent.outFloat >> jnt.sx
+
+        if squash:
+            n = name + "_sqrtStretch_POW"
+            sqrt_stretch = pm.createNode("floatMath", n=n)
+            sqrt_stretch.operation.set(6)  # power
+
+            stretch_percent.outFloat >> sqrt_stretch.floatA
+            sqrt_stretch.floatB.set(0.5)
+
+            n = name + "_stretchInvert_DIV"
+            stretch_invert = pm.createNode("floatMath", n=n)
+            stretch_invert.operation.set(3)
+
+            stretch_invert.floatA.set(1)
+            sqrt_stretch.outFloat >> stretch_invert.floatB
+
+            for jnt in chain:
+                stretch_invert.outFloat >> jnt.sy
+                stretch_invert.outFloat >> jnt.sz
+
+        # normalize_div = pm.createNode("floatMath", n=name + "_normalize_DIV")
+        # normalize_div.operation.set(3)  # divide
+        # curve_info.arcLength >> normalize_div.floatA
+        # normalize_div.floatB.set(curve_info.arcLength.get())
+        #
+        # for jnt in chain:
+        #     normalize_div.outFloat >> jnt.attr(driver_attr)
         return True
 
     def _twist_upperarm(self):
@@ -224,7 +324,8 @@ class Rig:
         params = {
             "curve": curve,
             "chain": chain,
-            "name": name
+            "control": self.root_control.sx,
+            "name": name,
         }
         self.stretch_spline(**params)
         return True
@@ -269,7 +370,8 @@ class Rig:
         params = {
             "curve": curve,
             "chain": chain,
-            "name": name
+            "control": self.root_control.sx,
+            "name": name,
         }
         self.stretch_spline(**params)
         return True
@@ -295,6 +397,23 @@ class Rig:
             pm.parent(self.twist_nodes[k]["curve"],
                       self.twist_nodes[k]["handle"],
                       twist_group)
+
+        pm.parent(self.twist_nodes["upper"]["chain"][0],
+                  self.twist_nodes["lower"]["chain"][0],
+                  start_bind, mid_bind, end_bind,
+                  twist_group)
+
+        pm.parent(twist_group, self.groups["dont_touch"])
+
+        # pm.parent(self.twist_nodes["upper"]["chain"][0],
+        #           self.twist_nodes["lower"]["chain"][0],
+        #           start_bind, mid_bind, end_bind, twist_group,
+        #           self.groups["dont_touch"])
+
+        for at in "trs":
+            for ax in "xyz":
+                pm.setAttr(twist_group.attr(at + ax), lock=1, keyable=0)
+        pm.setAttr(twist_group.v, lock=0, keyable=0, cb=1)
         return True
 
     def ikfk_switch(self):
@@ -330,8 +449,9 @@ class Rig:
         pm.addAttr(arm_settings, ln="IK_visibility", at="bool", k=0, h=1)
         pm.addAttr(arm_settings, ln="FK_visibility", at="bool", k=0, h=1)
 
-        arm_settings.FK_visibility >> self.controls["upper"].getParent().v
+        arm_settings.FK_visibility >> self.controls["gimbal"].getParent().v
         arm_settings.IK_visibility >> self.controls["arm"].v
+        arm_settings.IK_visibility >> self.controls["elbow"].v
 
         pm.setDrivenKeyframe(arm_settings.FK_visibility,
                              cd=arm_settings.FK_IK_blend, dv=0.999, v=1,
@@ -346,6 +466,15 @@ class Rig:
         pm.setDrivenKeyframe(arm_settings.IK_visibility,
                              cd=arm_settings.FK_IK_blend, dv=0.001, v=1,
                              itt="linear", ott="linear")
+
+        pm.parent(self.result_chain["upper"], self.groups["result"])
+
+        self.groups["arm"].v >> arm_settings.v
+
+        for at in "trs":
+            for ax in "xyz":
+                pm.setAttr(arm_settings.attr(at + ax), lock=1, keyable=0)
+        pm.setAttr(arm_settings.v, lock=1, keyable=0)
         return nodes
 
     @staticmethod
@@ -362,24 +491,50 @@ class Rig:
 
     def fk(self):
         # parent controls to their hierarchy
-        keys = ["upper", "lower", "hand"]
+        keys = ["gimbal", "upper", "lower", "hand"]
         parent = None
         for k in keys:
             offset = self.controls[k].getParent()
             pm.parent(offset, parent)
             parent = self.controls[k]
 
+        gimbal_ofs = self.controls["gimbal"].getParent()
+        gimbal_ofs.setParent(self.groups["fk"])
+
         # parent constrain controls to their joint
         parent = None
-        for k in keys:
+        for k in keys[1:]:
             pm.parentConstraint(self.controls[k], self.fk_chain[k])
             parent = self.controls[k]
 
         # SDK setup
-        for k in keys[:-1]:
+        for k in keys[1:-1]:
             driver = self.controls[k]
             driven = driver.getChildren(type="transform")[0]
             self.stretch_fk(driver, driven)
+
+        # clean up
+        pm.parent(self.fk_chain["upper"], self.groups["dont_touch"])
+
+        control_offsets = []
+        controls = []
+        for con in self.controls.values()[1:5]:
+            control_offsets += [con.getParent()]
+            controls += [con]
+
+        items = control_offsets + [self.groups["fk"]]
+        for i in items:
+            for at in "trs":
+                for ax in "xyz":
+                    pm.setAttr(i.attr(at + ax), lock=1, keyable=0)
+            pm.setAttr(i.v, lock=1, keyable=0)
+        pm.setAttr(self.groups["fk"].v, lock=0, cb=1)
+
+        for i in controls:
+            for at in "ts":
+                for ax in "xyz":
+                    pm.setAttr(i.attr(at + ax), lock=1, keyable=0)
+            pm.setAttr(i.v, lock=1, keyable=0)
         return True
 
     def stretch_and_bend_ik(self, name, handle, joints=[]):
@@ -417,6 +572,14 @@ class Rig:
             end.tx, cd=length.distance, dv=sum_length * 2, v=limb2_length * 2)
         pm.setInfinity(end.tx, poi="linear")
 
+        # global scale
+        params = {
+            "control": self.root_control.sx,
+            "length": length.distance,
+            "name": "globalScale_" + name + "Normalize_DIV"
+        }
+        scale_node = self.scalable(**params)
+
         # cleanup
         pm.hide(handle, length_start, length_end, length)
 
@@ -424,7 +587,8 @@ class Rig:
             "handle": handle,
             "length": length,
             "length_start": length_start,
-            "length_end": length_end
+            "length_end": length_end,
+            "scale": scale_node
         }
         return True
 
@@ -473,6 +637,22 @@ class Rig:
         pm.addAttr(snap_control, ln=attr, at="float", k=1, min=0, max=1)
         snap_control.attr(attr) >> stretch_blend.blender
 
+        # global scale
+        params = {
+            "control": self.root_control.sx,
+            "length": None,
+            "name": None
+        }
+
+        scale_nodes = []
+        for length in [first_length, second_length]:
+            params["length"] = length.distance
+
+            # globalScale_leftUpperArm_to_elbowNormalize_DIV
+            name = "globalScale_" + length.rsplit("_", 1)[0] + "Normalize_DIV"
+            params["name"] = name
+            scale_nodes += [self.scalable(**params)]
+
         self.snap_nodes = {
             "locators": {
                 "snap": snap_loc,
@@ -483,11 +663,15 @@ class Rig:
                 "first": first_length,
                 "second": second_length,
             },
+            "scale": {
+                "first": scale_nodes[0],
+                "second": scale_nodes[1]
+            },
             "stretch_blend": stretch_blend
         }
         return self.snap_nodes
 
-    def hybrid_elbow(self):
+    def hybrid_elbow(self, ik_const_grp):
         side = self.side
 
         # controls and their offsets
@@ -523,7 +707,6 @@ class Rig:
         self.stretch_fk(driver, driven)
 
         # blend between IK/FK with parent constraint and constrain group
-        ik_const_grp = pm.group(em=1, n=side + "Arm_IKConst_GRP")
         arm_control = self.controls["arm"]
         elbow_hand_control = hybrid_controls["hand"]
 
@@ -660,21 +843,47 @@ class Rig:
         # cleanup
         elbow_control.v.setLocked(1)
         elbow_control.v.setKeyable(1)
-        
-        i = ik_const_grp
-        for at in "trs":
-            for ax in "xyz":
-                pm.setAttr(i.attr(at + ax), lock=1, keyable=0)
-        pm.setAttr(i + ".v", lock=1, keyable=0)
-        
+
         self.hybrid_elbow_nodes = {
             "ik_const": ik_const_grp,
             "ik_vis": ik_vis_grp
         }
         self.hybrid_elbow_nodes.update(hybrid_controls)
-        return True
+        return hybrid_controls
+
+    @staticmethod
+    def scalable(control, length, name):
+        if isinstance(control, pm.Attribute) \
+                and isinstance(length, pm.Attribute):
+            pass
+        else:
+            print ">> need attribute for parameter"
+            return
+
+        global_scale = pm.createNode("floatMath", n=name)
+        global_scale.operation.set(3)
+        connections = length.outputs(p=1)
+
+        length >> global_scale.floatA
+        control >> global_scale.floatB
+        for i in connections:
+            global_scale.outFloat >> i
+        return global_scale
 
     def ik(self):
+        arm_group = self.groups["arm"]
+        base_ik_const_group = self.groups["base_ik"]
+        ik_const_group = self.groups["ik"]
+        dont_group = self.groups["dont_touch"]
+
+        self.ik_chain["upper"].setParent(base_ik_const_group)
+
+        arm_control = self.controls["arm"]
+        arm_control.setParent(arm_group)
+
+        elbow_control = self.controls["elbow"]
+        elbow_control.setParent(arm_group)
+
         side = self.side
         name = side + "Arm"
 
@@ -688,6 +897,8 @@ class Rig:
         handle, effector = pm.ikHandle(sj=start, ee=end, sol="ikRPsolver")
         handle.rename(name + "HDL")
         effector.rename(name + "EFF")
+
+        handle.setParent(ik_const_group)
 
         # stretch and bend IK
         params = {
@@ -705,15 +916,15 @@ class Rig:
         stretch_and_bend_ik_nodes = self.stretch_and_bend_ik_nodes.values()
         pm.hide(stretch_and_bend_ik_nodes)
 
-        # SC solver for hand IK
-        hand = self.ik_chain["hand"]
-        end = self.ik_chain["end"]
-        handle, effector = pm.ikHandle(sj=hand,
-                                       ee=end,
-                                       sol="ikSCsolver",
-                                       n=side + "Hand_HDL")
-        effector.rename(side + "Hand_EFF")
-        pm.parent(handle, arm_control)
+        length_start = self.stretch_and_bend_ik_nodes["length_start"]
+        length = self.stretch_and_bend_ik_nodes["length"]
+        pm.parent(length_start, length, base_ik_const_group)
+
+        # length_start = self.stretch_and_bend_ik_nodes["length_start"]
+        # length_start.setParent(base_ik_const_group)
+        #
+        # length = self.stretch_and_bend_ik_nodes["length"]
+        # length.setParent(dont_group)
 
         # snappable elbow
         params = {
@@ -740,5 +951,100 @@ class Rig:
         for k in ["locators", "length"]:
             pm.hide(self.snap_nodes[k].values())
 
-        self.hybrid_elbow()
+        snap_start_loc = self.snap_nodes["locators"]["start"]
+        snap_start_loc.setParent(base_ik_const_group)
+
+        snap_length_nodes = self.snap_nodes["length"].values()
+        pm.parent(snap_length_nodes, base_ik_const_group)
+
+        # pm.parent(snap_length_nodes, dont_group)
+
+        snap_elbow_loc = self.snap_nodes["locators"]["snap"]
+        for at in "trs":
+            for ax in "xyz":
+                pm.setAttr(snap_elbow_loc.attr(at + ax), lock=1, keyable=0)
+        pm.setAttr(snap_elbow_loc.v, lock=1, keyable=0)
+
+        # hybrid elbow
+        hybrid_controls = self.hybrid_elbow(ik_const_group)
+        ik_vis_group = self.hybrid_elbow_nodes["ik_vis"]
+        ik_vis_group.setParent(arm_group)
+
+        for at in "trs":
+            for ax in "xyz":
+                pm.setAttr(ik_vis_group.attr(at + ax), lock=1, keyable=0)
+        pm.setAttr(ik_vis_group.v, lock=1, keyable=0)
+
+        items = [v.getParent() for v in hybrid_controls.values()]
+        for i in items:
+            for at in "trs":
+                for ax in "xyz":
+                    pm.setAttr(i.attr(at + ax), lock=1, keyable=0)
+            pm.setAttr(i.v, lock=1, keyable=0)
+
+        items = hybrid_controls.values()
+        for i in items:
+            for at in "ts":
+                for ax in "xyz":
+                    pm.setAttr(i.attr(at + ax), lock=1, keyable=0)
+            pm.setAttr(i.v, lock=1, keyable=0)
+
+        pm.setAttr(elbow_control.forearm_FK_visibility, l=1, k=0, cb=0)
+
+        for k, v in hybrid_controls.items():
+            self.controls["elbow_" + k] = v
+
+        # SC solver for hand IK
+        hand = self.ik_chain["hand"]
+        end = self.ik_chain["end"]
+        handle, effector = pm.ikHandle(sj=hand,
+                                       ee=end,
+                                       sol="ikSCsolver",
+                                       n=side + "Hand_HDL")
+        effector.rename(side + "Hand_EFF")
+        handle.setParent(ik_const_group)
+        handle.hide()
+
+        items = [ik_const_group, base_ik_const_group]
+        for i in items:
+            for at in "trs":
+                for ax in "xyz":
+                    pm.setAttr(i.attr(at + ax), lock=1, keyable=0)
+            pm.setAttr(i.v, lock=0, keyable=0, cb=1)
+
+        for ax in "xyz":
+            pm.setAttr(arm_control.attr("s" + ax), lock=1, keyable=0)
+        pm.setAttr(arm_control.v, keyable=0)
+
+        for at in "rs":
+            for ax in "xyz":
+                pm.setAttr(elbow_control.attr(at + ax), lock=1, keyable=0)
+        pm.setAttr(elbow_control.v, keyable=0, cb=0)
         return True
+
+    def connect(self, controls):
+        side = self.side
+
+        spaces = OrderedDict()  # shoulder = leftArm_shoulderSpace_LOC
+        name = None
+        for con in controls:
+            if con.startswith(side):
+                # shoulder, body, root
+                name = con.split(side)[1]
+            key = name.split("_")[0].lower()
+            name = side + "Arm_" + key + "Space_LOC"
+
+            loc = pm.spaceLocator(n=name)
+            pm.matchTransform(loc, self.result_chain["upper"], pos=1)
+            pm.parent(loc, con)
+
+            spaces[key] = loc
+
+        # items = spaces.values()
+        # for i in items:
+        #     for at in "trs":
+        #         for ax in "xyz":
+        #             pm.setAttr(i.attr(at + ax), lock=1, keyable=0)
+        #     pm.setAttr(i.v, lock=1, keyable=0)
+        #     i.hide()
+        return spaces
