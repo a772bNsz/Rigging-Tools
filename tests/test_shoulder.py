@@ -52,7 +52,7 @@ class TestShoulder(unittest.TestCase):
         self.assertTrue(shoulder.ik_nodes,
                         "shoulder IK failed")
 
-    @unittest.skip("")
+    @unittest.skipIf(__name__ == "__main__", "")
     def test_connect(self):
         control = pm.spaceLocator(n="chest_CON")
         control.t.set(0.0, 139.22, 0.7)
