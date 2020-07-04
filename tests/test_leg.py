@@ -283,7 +283,7 @@ class TestBothLegs(unittest.TestCase):
             loc.setParent(parent)
             parent = loc
 
-        pm.setAttr(self.controls[1]+".translate", [0.0, 139.22, 0.7])
+        pm.setAttr(self.controls[1]+".translate", [0.0, 91.23, -0.45])
         root_con = pm.PyNode(self.controls[-1])
 
         pm.select(cl=1)
