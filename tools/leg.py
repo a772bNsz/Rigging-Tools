@@ -342,6 +342,7 @@ class Rig(Foot):
             pair_blend.outTranslate >> result_chain[n].translate
 
             leg_settings.FK_IK_blend >> pair_blend.weight
+            pair_blend.rotInterpolation.set(1)  # quaternion interpolation
             nodes += [pair_blend]
 
         pm.addAttr(leg_settings, ln="IK_visibility", at="bool", k=0, h=1)
