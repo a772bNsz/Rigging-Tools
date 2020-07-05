@@ -1,7 +1,6 @@
 import unittest
 import pymel.core as pm
 from tools.arm import Rig
-from tools.shoulder import Rig as ShoulderRig
 from tests.test_shoulder import TestShoulder
 
 
@@ -426,6 +425,27 @@ class TestShoulderArmConnection(TestShoulder):
         print ">>>>> TEARDOWN"
 
 
+class TestHand(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        print ">>>>> SETUP"
+
+    def setUp(self):
+        pm.newFile(f=1)
+
+    @classmethod
+    def tearDownClass(cls):
+        try:
+            from tools.control_shapes import ControlShapes
+            json_file = __file__.split("tests")[0] + "/results/arm.json"
+            cs = ControlShapes()
+            cs.load(json_file=json_file)
+        except:
+            pass
+        pm.saveAs("result.ma", type="mayaAscii")
+        print ">>>>> TEARDOWN"
+
+
 class TestBothArms(TestArm):
     @classmethod
     def setUpClass(cls):
@@ -444,8 +464,8 @@ if __name__ == "__main__":
     standalone.initialize(name='python')
     cmds.loadPlugin("lookdevKit")  # not necessary if $PYMEL_SKIP_INIT=0
 
-    unittest.main(verbosity=3, failfast=1)
+    # unittest.main(verbosity=3, failfast=1)
 
-    # test_case = TestArm
-    # suite = unittest.TestLoader().loadTestsFromTestCase(test_case)
-    # runner = unittest.TextTestRunner(verbosity=3, failfast=1).run(suite)
+    test_case = TestShoulderArmConnection
+    suite = unittest.TestLoader().loadTestsFromTestCase(test_case)
+    runner = unittest.TextTestRunner(verbosity=3, failfast=1).run(suite)

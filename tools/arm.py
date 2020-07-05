@@ -72,22 +72,6 @@ class Rig:
         grp.setPivots(root_pivot)
         groups["base_ik"] = grp
 
-        # for k in ["result", "IK", "FK"]:
-        #     grp = pm.group(em=1, n=name + "_{}Const_GRP".format(k))
-        #     if k != "IK":
-        #         grp.setPivots(root_pivot, ws=1)
-        #
-        #     if k == "FK":
-        #         grp.setParent(groups["arm"])
-        #     else:
-        #         grp.setParent(groups["dont_touch"])
-        #     groups[k.lower()] = grp  # groups["ik"]
-        #
-        # grp = pm.group(em=1, n=name + "Base_IKConst_GRP")
-        # grp.setPivots(root_pivot, ws=1)
-        # grp.setParent(groups["dont_touch"])
-        # groups["base_ik"] = grp
-
         items = [groups["arm"], groups["dont_touch"]]
         for i in items:
             for at in "trs":
@@ -277,14 +261,6 @@ class Rig:
             for jnt in chain:
                 stretch_invert.outFloat >> jnt.sy
                 stretch_invert.outFloat >> jnt.sz
-
-        # normalize_div = pm.createNode("floatMath", n=name + "_normalize_DIV")
-        # normalize_div.operation.set(3)  # divide
-        # curve_info.arcLength >> normalize_div.floatA
-        # normalize_div.floatB.set(curve_info.arcLength.get())
-        #
-        # for jnt in chain:
-        #     normalize_div.outFloat >> jnt.attr(driver_attr)
         return True
 
     def _twist_upperarm(self):
@@ -362,7 +338,6 @@ class Rig:
             "name": name,
         }
         twisted = self.ik_spline(**params)
-        start_bind = twisted["start_bind"]
         end_bind = twisted["end_bind"]
 
         end_bind.rename(side + "Arm_end_bind_JNT")
@@ -407,11 +382,6 @@ class Rig:
                   twist_group)
 
         pm.parent(twist_group, self.groups["dont_touch"])
-
-        # pm.parent(self.twist_nodes["upper"]["chain"][0],
-        #           self.twist_nodes["lower"]["chain"][0],
-        #           start_bind, mid_bind, end_bind, twist_group,
-        #           self.groups["dont_touch"])
 
         for at in "trs":
             for ax in "xyz":
@@ -905,12 +875,6 @@ class Rig:
         length = self.stretch_and_bend_ik_nodes["length"]
         pm.parent(length_start, length, base_ik_const_group)
 
-        # length_start = self.stretch_and_bend_ik_nodes["length_start"]
-        # length_start.setParent(base_ik_const_group)
-        #
-        # length = self.stretch_and_bend_ik_nodes["length"]
-        # length.setParent(dont_group)
-
         # snappable elbow
         params = {
             "controls": {
@@ -941,8 +905,6 @@ class Rig:
 
         snap_length_nodes = self.snap_nodes["length"].values()
         pm.parent(snap_length_nodes, base_ik_const_group)
-
-        # pm.parent(snap_length_nodes, dont_group)
 
         snap_elbow_loc = self.snap_nodes["locators"]["snap"]
         for at in "trs":
