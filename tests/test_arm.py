@@ -2,6 +2,7 @@ import unittest
 import pymel.core as pm
 from tools.arm import Rig
 from tools.shoulder import Rig as ShoulderRig
+from tests.test_shoulder import TestShoulder
 
 
 class TestArm(unittest.TestCase):
@@ -46,6 +47,7 @@ class TestArm(unittest.TestCase):
         self.assertTrue(len(arm.controls) == 9,
                         "arm rig with failed")
 
+    # @unittest.skip("")
     def test_connect(self):
         arm = self.arm
         arm.twist()
@@ -333,7 +335,8 @@ class TestArm(unittest.TestCase):
         for k in ["locators", "length"]:
             pm.hide(arm.snap_nodes[k].values())
 
-        arm.hybrid_elbow()
+        ik_const_group = arm.groups["ik"]
+        arm.hybrid_elbow(ik_const_group)
         self.assertTrue(arm.hybrid_elbow_nodes,
                         "hybrid elbow failed")
 
@@ -359,40 +362,67 @@ class TestArm(unittest.TestCase):
         print ">>>>> TEARDOWN"
 
 
-class TestShoulderArmConnection(unittest.TestCase):
+class TestShoulderArmConnection(TestShoulder):
     @classmethod
     def setUpClass(cls):
         print ">>>>> SETUP"
 
     def setUp(self):
         pm.newFile(f=1)
+        super(TestShoulderArmConnection, self).setUp()
+        super(TestShoulderArmConnection, self).test_connect()
+        pm.parent("leftShoulder_GRP", "chest_CON", "root_transform_CON")
 
-        root = pm.joint(p=[8.91, 142.2, 0.97])
-        pm.joint(p=[17.19, 138.49, 0.93])
+        self.controls = \
+            ["leftShoulder_attach_GRP", "body_CON", "root_transform_CON"]
 
-        self.shoulder = ShoulderRig(root, side="left")
-        self.shoulder.ik()
+        for i in range(3):
+            try:
+                self.controls[i] = pm.PyNode(self.controls[i])
+            except:
+                self.controls[i] = pm.spaceLocator(n=self.controls[i])
+
+        pm.move(self.controls[1], [0.0, 91.23, -0.45], a=1)
+
+        root_con = self.controls[-1]
+        pm.parent("body_CON", root_con)
+        pm.parent("chest_CON", "body_CON")
+
+        pm.select(cl=1)
 
         root = pm.joint(p=[17.19, 138.49, 0.94], a=1)
         pm.joint(p=[40.69, 138.49, 1.44], a=1)
         pm.joint(p=[68.17, 138.49, 2.02], a=1)
         pm.joint(p=[75.66, 138.49, 2.18], a=1)
 
-        self.arm = Rig(root, side="left")
-        self.arm.ikfk_switch()
-        self.arm.fk()
-        self.arm.ik()
+        root_con = self.controls[-1]
 
+        self.arm = Rig(root, side="left", root_control=root_con)
+
+    # @unittest.skip("")
     def test_connect(self):
-        control = pm.spaceLocator(n="chest_CON")
-        control.t.set(0.0, 139.22, 0.7)
+        arm = self.arm
+        arm.twist()
+        arm.ikfk_switch()
+        arm.fk()
+        arm.ik()
 
-        self.arm.connect(control)
-        self.assertIsNone("Done",
-                          "connection failed")
+        controls = self.controls
+        # ["leftShoulder_attach_GRP", "body_CON", "root_transform_CON"]
+        spaces = arm.connect(controls)
+        self.assertTrue(spaces,
+                        "connection failed")
 
     @classmethod
     def tearDownClass(cls):
+        try:
+            from tools.control_shapes import ControlShapes
+            json_file = __file__.split("tests")[0] + "/results/arm.json"
+            cs = ControlShapes()
+            cs.load(json_file=json_file)
+        except:
+            pass
+        pm.saveAs("result.ma", type="mayaAscii")
         print ">>>>> TEARDOWN"
 
 
@@ -414,8 +444,8 @@ if __name__ == "__main__":
     standalone.initialize(name='python')
     cmds.loadPlugin("lookdevKit")  # not necessary if $PYMEL_SKIP_INIT=0
 
-    # unittest.main(verbosity=3, failfast=1)
+    unittest.main(verbosity=3, failfast=1)
 
-    test_case = TestArm
-    suite = unittest.TestLoader().loadTestsFromTestCase(test_case)
-    runner = unittest.TextTestRunner(verbosity=3, failfast=1).run(suite)
+    # test_case = TestArm
+    # suite = unittest.TestLoader().loadTestsFromTestCase(test_case)
+    # runner = unittest.TextTestRunner(verbosity=3, failfast=1).run(suite)

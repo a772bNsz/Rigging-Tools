@@ -732,29 +732,11 @@ class Rig:
         ik_vis_grp = pm.group(em=1, n=side + "Arm_IK_vis_GRP")
         pm.matchTransform(ik_vis_grp, arm_control)
         pm.parent(arm_control, ik_vis_grp)
-        
+
         settings_control = self.controls["arm_settings"]
         settings_control.IK_visibility >> ik_vis_grp.v
         settings_control.IK_visibility // arm_control.v
-        
-        # SDK for arm settings' FK/IK Blend
-        pm.setDrivenKeyframe(
-            elbow_control.v,
-            cd=settings_control.FK_IK_blend,
-            dv=0,
-            v=0,
-            itt="linear",
-            ott="linear"
-        )
-        pm.setDrivenKeyframe(
-            elbow_control.v,
-            cd=settings_control.FK_IK_blend,
-            dv=0.001,
-            v=1,
-            itt="linear",
-            ott="linear"
-        )
-        
+
         # SDK for elbow control's FK Forearm Blend
         pm.addAttr(elbow_control,
                    ln="FK_forearmBlend", k=1, at="float", min=0, max=1)
@@ -842,7 +824,7 @@ class Rig:
             itt="linear",
             ott="linear"
         )
-        
+
         # cleanup
         elbow_control.v.setLocked(1)
         elbow_control.v.setKeyable(1)
@@ -1058,10 +1040,10 @@ class Rig:
         return orient_constraint
 
     def connect(self, controls):
-        base_ik_const_group = self.groups["base_ik"]
-        fk_const_group = self.groups["fk"]
+        base_ik_const_group, fk_const_group, result_const_group = \
+            [self.groups[k] for k in ["base_ik", "fk", "result"]]
 
-        items = [fk_const_group, base_ik_const_group]
+        items = [fk_const_group, base_ik_const_group, result_const_group]
         for i in items:
             for at in "trs":
                 for ax in "xyz":
@@ -1073,7 +1055,7 @@ class Rig:
         for con in controls:
             name = con
 
-            if con.startswith(side):
+            if side in str(con):
                 # shoulder, body, root
                 name = con.split(side)[1]
 
@@ -1086,14 +1068,16 @@ class Rig:
 
             spaces[key] = loc
 
-        # shoulder space drives IK and FK translation
-        shoulder_space = spaces["shoulder"]
+        # the inner most space drives IK and FK translation
+        innermost_space = spaces["shoulder"]
 
-        pm.pointConstraint(shoulder_space, base_ik_const_group)
-        pm.pointConstraint(shoulder_space, fk_const_group)
+        point_constraint = None
+        for k in ["base_ik", "fk", "result"]:
+            point_constraint = \
+                pm.pointConstraint(innermost_space, self.groups[k])
 
         # FK rotation space
-        arm_settings_con = self.controls["arm"]
+        arm_settings_con = self.controls["arm_settings"]
         pm.addAttr(arm_settings_con, ln="FK_rotationSpace", at="enum", k=1,
                    en=":".join(spaces.keys()))
 
@@ -1104,6 +1088,21 @@ class Rig:
         }
         self.fk_rotation_space(**params)
 
+        # IKFK space switch blend
+        name = side + "Arm"
+        point_blend = \
+            pm.createNode("blendColors", n=name + "_resultPointChoice")
+
+        point_constraint.ctx // result_const_group.tx
+        point_constraint.cty // result_const_group.ty
+        point_constraint.ctz // result_const_group.tz
+
+        arm_settings_con.FK_IK_blend >> point_blend.blender
+        point_constraint.constraintTranslate >> point_blend.color1
+        point_blend.color2.set(0, 0, 0)
+        point_blend.output >> result_const_group.t
+
+        # clean up
         items = spaces.values()
         for i in items:
             for at in "trs":
@@ -1111,11 +1110,12 @@ class Rig:
                     pm.setAttr(i.attr(at + ax), lock=1, keyable=0)
             pm.setAttr(i.v, 0, lock=1, keyable=0,)
 
-        items = [fk_const_group, base_ik_const_group]
+        items = [fk_const_group, base_ik_const_group, result_const_group]
         for i in items:
             for at in "trs":
                 for ax in "xyz":
-                    pm.setAttr(i.attr(at + ax), lock=1)
+                    pm.setAttr(i.attr(at + ax), lock=1, keyable=0)
+        result_const_group.v.setKeyable(0)
         return True
 
 
