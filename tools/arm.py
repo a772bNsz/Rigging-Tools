@@ -1079,5 +1079,3 @@ class Rig:
                     pm.setAttr(i.attr(at + ax), lock=1, keyable=0)
         result_const_group.v.setKeyable(0)
         return True
-
-
