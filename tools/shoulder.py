@@ -23,10 +23,18 @@ class Rig:
         groups = OrderedDict(
             {"shoulder": pm.group(em=1, n=side + "Shoulder_GRP")})
         groups["dont_touch"] = pm.group(em=1, n="dontTouch_GRP")
+
         groups["attach"] = pm.group(em=1, n=side + "Shoulder_attach_GRP")
 
         pm.parent(groups["dont_touch"], groups["shoulder"])
         pm.parent(self.result_chain["root"], groups["dont_touch"])
+
+        items = [groups[k] for k in ["shoulder", "dont_touch"]]
+        for i in items:
+            for at in "trs":
+                for ax in "xyz":
+                    pm.setAttr(i.attr(at + ax), lock=1, keyable=0)
+            pm.setAttr(i.v, keyable=0, cb=1)
         return groups
 
     def _controls(self, translate=1, rotate=0):
@@ -50,6 +58,12 @@ class Rig:
         for at in "rs":
             for ax in "xyz":
                 pm.setAttr(i.attr(at + ax), lock=1, keyable=0)
+
+        i = controls["shoulder"].getParent()
+        for at in "trs":
+            for ax in "xyz":
+                pm.setAttr(i.attr(at + ax), lock=1, keyable=0)
+        pm.setAttr(i.v, lock=1, keyable=0)
 
         pm.parent(controls["shoulder"].getParent(), self.groups["shoulder"])
         return controls
@@ -109,23 +123,35 @@ class Rig:
         name = side + "Shoulder"
         start = self.result_chain["root"]
         end = self.result_chain["end"]
+        shoulder_con = self.controls["shoulder"]
 
         # single-chain IK handle
         handle, effector = pm.ikHandle(sj=start, ee=end, sol="ikSCsolver")
         handle.rename(name + "_HDL")
         effector.rename(name + "_EFF")
 
-        locator = pm.spaceLocator(n=side + name + "_LOC")
+        locator = pm.spaceLocator(n=name + "_LOC")
         pm.matchTransform(locator, end, pos=1)
 
         pm.parent(handle, locator)
-        pm.parent(locator, self.controls["shoulder"])
+        pm.parent(locator, shoulder_con)
         pm.hide(locator)
+
+        for at in "rs":
+            for ax in "xyz":
+                pm.setAttr(shoulder_con.attr(at + ax), lock=1, keyable=0)
+        pm.setAttr(shoulder_con.v, lock=1, keyable=0,)
 
         # prep abstraction receiver
         attach_group = self.groups["attach"]
         pm.parentConstraint(end, attach_group)
         pm.parent(attach_group, self.controls["shoulder"])
+
+        i = attach_group
+        for at in "trs":
+            for ax in "xyz":
+                pm.setAttr(i.attr(at + ax), lock=1, keyable=0)
+        pm.setAttr(i.v, lock=1, keyable=0)
 
         self.ik_nodes = {
             "handle": handle,
