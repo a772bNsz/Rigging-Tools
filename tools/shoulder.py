@@ -23,6 +23,7 @@ class Rig:
         groups = OrderedDict(
             {"shoulder": pm.group(em=1, n=side + "Shoulder_GRP")})
         groups["dont_touch"] = pm.group(em=1, n="dontTouch_GRP")
+        groups["attach"] = pm.group(em=1, n=side + "Shoulder_attach_GRP")
 
         pm.parent(groups["dont_touch"], groups["shoulder"])
         pm.parent(self.result_chain["root"], groups["dont_touch"])
@@ -120,6 +121,11 @@ class Rig:
         pm.parent(handle, locator)
         pm.parent(locator, self.controls["shoulder"])
         pm.hide(locator)
+
+        # prep abstraction receiver
+        attach_group = self.groups["attach"]
+        pm.parentConstraint(end, attach_group)
+        pm.parent(attach_group, self.controls["shoulder"])
 
         self.ik_nodes = {
             "handle": handle,
