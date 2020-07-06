@@ -529,6 +529,19 @@ class Rig(Foot):
             v=shin_length * 2
         )
         pm.setInfinity(ik_chain["foot"].tx, poi="linear")
+
+        # Global Scale
+        set_driven_keys = leg_length.distance.outputs(p=1)
+
+        name = "globalScale_" + leg_length.split("IK", 1)[0] + "Normalize_DIV"
+        normalize_scale = pm.createNode("floatMath", n=name)
+        normalize_scale.operation.set(3)  # divide
+
+        leg_length.distance >> normalize_scale.floatA
+        self.root_control.sy >> normalize_scale.floatB
+
+        for sdk in set_driven_keys:
+            normalize_scale.outFloat >> sdk
         return True
 
     def _no_flip_knee(self, ik_chain, knee_loc):
@@ -613,7 +626,7 @@ class Rig(Foot):
         knee_control.kneeSnap >> stretch_blend.blender
 
         # Global Scale
-        name = "globalScale_{}LegNormalize_DIV".format(side)
+        name = "globalScale_{}Leg_kneeSnap_Normalize_DIV".format(side)
         pv_scale = pm.createNode("multiplyDivide", n=name)
         pv_scale.operation.set(2)  # divide
 
@@ -748,12 +761,6 @@ class Rig(Foot):
         pm.addAttr(leg_settings_con, ln="FK_rotationSpace", at="enum",
                    k=1, en=":".join(spaces.keys()))
 
-        # --- SDK for result constrain group
-        self._fk_rotation_space(
-            spaces,
-            driver=leg_settings_con.FK_rotationSpace,
-            driven=const_groups["result"])
-
         # --- SDK for FK constrain group
         self._fk_rotation_space(
             spaces,
@@ -767,17 +774,6 @@ class Rig(Foot):
             pm.pointConstraint(connect_space, grp, mo=1)
 
         # IKFK Space Switch Blend
-        orient_constraint = const_groups["result"].rx.inputs()[0]
-        rotation_blend = pm.createNode(
-            "animBlendNodeAdditiveRotation", n=side + "Leg_resultOrientChoice")
-        rotation_blend.weightB.set(0)
-
-        leg_settings_con.FK_IK_blend >> rotation_blend.weightA
-        orient_constraint.constraintRotate >> rotation_blend.inputB
-        rotation_blend.outputX >> const_groups["result"].rx
-        rotation_blend.outputY >> const_groups["result"].ry
-        rotation_blend.outputZ >> const_groups["result"].rz
-
         point_constraint = const_groups["result"].tx.inputs()[0]
         translation_blend = pm.createNode(
             "blendColors", n=side + "Leg_resultPointChoice")
