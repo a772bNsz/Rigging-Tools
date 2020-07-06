@@ -29,7 +29,7 @@ class Rig:
         pm.parent(groups["dont_touch"], groups["shoulder"])
         pm.parent(self.result_chain["root"], groups["dont_touch"])
 
-        items = [groups[k] for k in ["shoulder", "dont_touch"]]
+        items = [groups["dont_touch"]]
         for i in items:
             for at in "trs":
                 for ax in "xyz":
@@ -166,13 +166,21 @@ class Rig:
         n = name if "" == self.side else self.side + "Shoulder"
         const_loc = pm.spaceLocator(n=n + "_const_LOC")
 
+        shoulder_grp = self.groups[name]
         pm.matchTransform(const_loc, self.controls[name])
         constraint_node = \
-            pm.parentConstraint(const_loc, self.groups[name], mo=1)
+            pm.parentConstraint(const_loc, shoulder_grp, mo=1)
 
         pm.parent(const_loc, control)
         const_loc.hide()
         pm.select(cl=1)
+
+        items = [shoulder_grp]
+        for i in items:
+            for at in "trs":
+                for ax in "xyz":
+                    pm.setAttr(i.attr(at + ax), lock=1, keyable=0)
+            pm.setAttr(i.v, keyable=0, cb=1)
 
         self.connect_nodes = {
             "abstraction_locator": const_loc,
