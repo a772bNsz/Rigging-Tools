@@ -274,6 +274,7 @@ class Rig(Foot):
     def _controls(side, result_chain, ik_chain, fk_chain):
         leg_settings = pm.spaceLocator(n=side + "Leg_settings_CON")
         pm.parentConstraint(result_chain["foot"], leg_settings)
+        pm.scaleConstraint(result_chain["foot"], leg_settings)
         controls = {"leg_settings": leg_settings}
 
         thigh_fk = pm.spaceLocator(n=side + "Thigh_FK_CON")
