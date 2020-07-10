@@ -2,7 +2,178 @@ import pymel.core as pm
 from collections import OrderedDict
 
 
-class Rig:
+class Hand(object):
+    def __init__(self, root, side="", root_control=""):
+        self.side = side
+        self.root_control = root_control
+
+        name = "hand" if "" == side else side + "Hand"
+        root.rename(name + "Base_result_JNT")
+        self.result_chain = OrderedDict({"hand": root})
+
+        self.groups = self._groups(side, root)
+        self.controls = OrderedDict()
+
+    def finger_chain(self, root, name="finger"):
+        pm.joint(root, e=1, oj="xyz", sao="ydown", ch=1, zso=1)
+
+        result_dict = OrderedDict()
+
+        side = self.side
+        n = name if "" == side else side + name.capitalize()
+        root.rename(n + "Base_result_JNT")
+
+        result_chain = [root] + root.getChildren(ad=1)[::-1]
+        for i, jnt in enumerate(result_chain):
+            jnt.rotateOrder.set(5)  # zyx
+
+            if i == 0:
+                result_dict["base"] = jnt
+                continue
+
+            jnt.rename("{}{}_result_JNT".format(n, i + 1))
+            result_dict[str(i)] = jnt
+
+        result_chain[-1].jointOrient.set(0, 0, 0)
+        pm.parent(root, self.result_chain["hand"])
+
+        self.result_chain[name] = result_dict
+        return result_dict
+
+    def _groups(self, side, root):
+        groups = OrderedDict()
+        name = "hand" if "" == side else side + "Hand"
+
+        groups["hand"] = hand = pm.group(em=1, n=name + "_GRP")
+
+        groups["fk_const"] = fk_const = pm.group(em=1, n=name + "_FKConst_GRP")
+        pm.matchTransform(fk_const, root, pos=1)
+        fk_const.setParent(hand)
+
+        groups["dont_touch"] = dont_touch = pm.group(em=1, n="dont_touch")
+        dont_touch.setParent(hand)
+
+        groups["const"] = const = pm.group(em=1, n=name + "_const_GRP")
+        pm.matchTransform(const, root, piv=1)
+        const.setParent(dont_touch)
+
+        groups["handle"] = handle = pm.group(em=1, n=name + "_straightHDL_GRP")
+        handle.setParent(const)
+        return groups
+
+    def finger_controls(self, finger_chain, name="finger"):
+        controls = OrderedDict()
+        parent = None
+        for k, v in finger_chain.items():
+            n = v.split("result_JNT")[0]  # fingerBase_ or finger1_
+
+            con = pm.spaceLocator(n=n + "CON")
+            con.rotateOrder.set(5)  #zyx
+            pm.matchTransform(con, v)
+
+            sdk, = pm.duplicate(con, po=1, n=n + "SDK")
+            ofs, = pm.duplicate(con, po=1, n=n + "OFS")
+
+            pm.parent(con, sdk)
+            pm.parent(sdk, ofs)
+            pm.parent(ofs, parent)
+            parent = con
+
+            pm.parentConstraint(con, v, mo=1)
+
+            _dict = {"ofs": ofs, "sdk": sdk, "con": con}
+            controls[k] = _dict
+
+        # no need for SDK group on the tip
+        last_control = controls.values()[-1]
+        last_control["con"].setParent(last_control["ofs"])
+        pm.delete(last_control["sdk"])
+
+        # parent to fk const group
+        first_control = controls.values()[0]
+        pm.parent(first_control["ofs"], self.groups["fk_const"])
+
+        controls[k]["sdk"] = None
+        self.controls[name] = controls
+        return controls
+
+    @staticmethod
+    def flop(finger_controls, attr="rz"):
+        first = finger_controls["1"]  # metacarpophalangeal
+        first_con = first["con"]
+        first_sdk = first["sdk"]
+
+        pm.addAttr(first_con, ln="flop", at="float", min=-10, max=10, k=1)
+        pm.addAttr(first_con, ln="flop_min", nn="Flop Min", at="float",
+                   k=0, min=-360, max=360, dv=-80)
+        pm.addAttr(first_con, ln="flop_max", nn="Flop Max", at="float",
+                   k=0, min=-360, max=360, dv=95)
+
+        name = first_con + "_flop_SDK"
+        sdk = pm.createNode("animCurveUL", n=name)
+
+        pm.setKeyframe(sdk, f=0, v=0, itt="linear", ott="linear")
+        pm.setKeyframe(sdk, f=10, v=360, itt="linear", ott="linear")
+        pm.setKeyframe(sdk, f=-10, v=-360, itt="linear", ott="linear")
+
+        name = name.replace("SDK", "RMP")
+        remap = pm.createNode("remapValue", n=name)
+        remap.inputMin.set(-360)
+        remap.inputMax.set(360)
+
+        first_con.flop >> sdk.input
+        sdk.output >> remap.inputValue
+        remap.outValue >> first_sdk.attr(attr)
+
+        remap.vl[0].vlp.set(0)
+        first_con.flop_min >> remap.vl[0].vlfv
+
+        remap.vl[1].vlp.set(0.5)
+        remap.vl[1].vlfv.set(0)
+
+        remap.vl[2].vlp.set(1)
+        first_con.flop_max >> remap.vl[2].vlfv
+        return True
+
+    def curl(self, finger_controls, attr="rz"):
+        first = finger_controls["1"]  # metacarpophalangeal
+        first_con = first["con"]
+        first_sdk = first["sdk"]
+
+        pm.addAttr(first_con, ln="curl", at="float", min=-10, max=10, k=1)
+        pm.addAttr(first_con, ln="curl_min", nn="Curl Min", at="float",
+                   k=0, min=-100, max=100, dv=-80)
+        pm.addAttr(first_con, ln="curl_max", nn="Curl Max", at="float",
+                   k=0, min=-100, max=100, dv=95)
+
+        name = first_con + "_curl_SDK"
+        sdk = pm.createNode("animCurveUL", n=name)
+
+        pm.setKeyframe(sdk, f=0, v=0, itt="linear", ott="linear")
+        pm.setKeyframe(sdk, f=10, v=360, itt="linear", ott="linear")
+        pm.setKeyframe(sdk, f=-10, v=-360, itt="linear", ott="linear")
+
+        name = name.replace("SDK", "RMP")
+        remap = pm.createNode("remapValue", n=name)
+        remap.inputMin.set(-360)
+        remap.inputMax.set(360)
+
+        first_con.flop >> sdk.input
+        sdk.output >> remap.inputValue
+        remap.outValue >> first_sdk.attr(attr)
+
+        remap.vl[0].vlp.set(0)
+        first_con.flop_min >> remap.vl[0].vlfv
+
+        remap.vl[1].vlp.set(0.5)
+        remap.vl[1].vlfv.set(0)
+
+        remap.vl[2].vlp.set(1)
+        first_con.flop_max >> remap.vl[2].vlfv
+        return True
+
+
+class Rig(Hand):
     def __init__(self, root, side="", root_control=""):
         self.side = side
         self.root_control = root_control
@@ -18,6 +189,10 @@ class Rig:
         self.stretch_and_bend_ik_nodes = {}
         self.snap_nodes = {}
         self.hybrid_elbow_nodes = {}
+
+        # params = {}
+        # self.hand = super(Rig, self)
+        # self.hand.__init__(**params)
 
     @staticmethod
     def _joint_chains(root, side):
