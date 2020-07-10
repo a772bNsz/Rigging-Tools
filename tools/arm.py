@@ -31,7 +31,7 @@ class Hand(object):
                 result_dict["base"] = jnt
                 continue
 
-            jnt.rename("{}{}_result_JNT".format(n, i + 1))
+            jnt.rename("{}{}_result_JNT".format(n, i))
             result_dict[str(i)] = jnt
 
         result_chain[-1].jointOrient.set(0, 0, 0)
@@ -135,41 +135,48 @@ class Hand(object):
         first_con.flop_max >> remap.vl[2].vlfv
         return True
 
-    def curl(self, finger_controls, attr="rz"):
+    @staticmethod
+    def curl(finger_controls, attr="rz"):
         first = finger_controls["1"]  # metacarpophalangeal
         first_con = first["con"]
-        first_sdk = first["sdk"]
 
         pm.addAttr(first_con, ln="curl", at="float", min=-10, max=10, k=1)
-        pm.addAttr(first_con, ln="curl_min", nn="Curl Min", at="float",
-                   k=0, min=-100, max=100, dv=-80)
-        pm.addAttr(first_con, ln="curl_max", nn="Curl Max", at="float",
-                   k=0, min=-100, max=100, dv=95)
-
         name = first_con + "_curl_SDK"
         sdk = pm.createNode("animCurveUL", n=name)
 
         pm.setKeyframe(sdk, f=0, v=0, itt="linear", ott="linear")
-        pm.setKeyframe(sdk, f=10, v=360, itt="linear", ott="linear")
-        pm.setKeyframe(sdk, f=-10, v=-360, itt="linear", ott="linear")
+        pm.setKeyframe(sdk, f=10, v=100, itt="linear", ott="linear")
+        pm.setKeyframe(sdk, f=-10, v=-100, itt="linear", ott="linear")
 
-        name = name.replace("SDK", "RMP")
-        remap = pm.createNode("remapValue", n=name)
-        remap.inputMin.set(-360)
-        remap.inputMax.set(360)
+        first_con.curl >> sdk.input
 
-        first_con.flop >> sdk.input
-        sdk.output >> remap.inputValue
-        remap.outValue >> first_sdk.attr(attr)
+        for k, v in finger_controls.items()[2:]:
+            if not v["sdk"]:
+                continue
 
-        remap.vl[0].vlp.set(0)
-        first_con.flop_min >> remap.vl[0].vlfv
+            ln = "curl{}_".format(k)
+            nn = "Curl {} ".format(k)
+            pm.addAttr(first_con, ln=ln + "min", nn=nn + "Min", at="float",
+                       k=0, min=-100, max=100, dv=-20)
+            pm.addAttr(first_con, ln=ln + "max", nn=nn + "Max", at="float",
+                       k=0, min=-100, max=100, dv=95)
 
-        remap.vl[1].vlp.set(0.5)
-        remap.vl[1].vlfv.set(0)
+            name = v["sdk"].replace("SDK", "RMP")
+            remap = pm.createNode("remapValue", n=name)
+            remap.inputMin.set(-100)
+            remap.inputMax.set(100)
 
-        remap.vl[2].vlp.set(1)
-        first_con.flop_max >> remap.vl[2].vlfv
+            sdk.output >> remap.inputValue
+            remap.outValue >> v["sdk"].attr(attr)
+
+            remap.vl[0].vlp.set(0)
+            first_con.attr(ln + "min") >> remap.vl[0].vlfv
+
+            remap.vl[1].vlp.set(0.5)
+            remap.vl[1].vlfv.set(0)
+
+            remap.vl[2].vlp.set(1)
+            first_con.attr(ln + "max") >> remap.vl[2].vlfv
         return True
 
 
