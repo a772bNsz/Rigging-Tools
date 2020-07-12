@@ -98,45 +98,92 @@ class Hand(object):
         return controls
 
     @staticmethod
-    def flop(finger_controls, attr="rz"):
-        first = finger_controls["1"]  # metacarpophalangeal
-        first_con = first["con"]
-        first_sdk = first["sdk"]
+    def finger_attribute(attributes, driver, driven, min, max, dmin, dmax):
+        driver_attr, driven_attr = attributes
 
-        pm.addAttr(first_con, ln="flop", at="float", min=-10, max=10, k=1)
-        pm.addAttr(first_con, ln="flop_min", nn="Flop Min", at="float",
-                   k=0, min=-360, max=360, dv=-80)
-        pm.addAttr(first_con, ln="flop_max", nn="Flop Max", at="float",
-                   k=0, min=-360, max=360, dv=95)
-
-        name = first_con + "_flop_SDK"
+        pm.addAttr(driver, ln=driver_attr, at="float", min=-10, max=10, k=1)
+        name = "_".join([str(driver), driver_attr, "SDK"])
         sdk = pm.createNode("animCurveUL", n=name)
 
         pm.setKeyframe(sdk, f=0, v=0, itt="linear", ott="linear")
-        pm.setKeyframe(sdk, f=10, v=360, itt="linear", ott="linear")
-        pm.setKeyframe(sdk, f=-10, v=-360, itt="linear", ott="linear")
+        pm.setKeyframe(sdk, f=10, v=max, itt="linear", ott="linear")
+        pm.setKeyframe(sdk, f=-10, v=min, itt="linear", ott="linear")
+
+        driver.attr(driver_attr) >> sdk.input
+
+        for k, v in driven.items():
+            if not v["sdk"]:
+                break
+
+            range_name = driver_attr + "Range" + k
+            range_nn = driver_attr.capitalize() + " Range " + v["sdk"]
+            min_name = driver_attr + "Min" + k
+            max_name = driver_attr + "Max" + k
+
+            pm.addAttr(driver, ln=range_name, nn=range_nn, at="float2")
+            pm.addAttr(driver, ln=min_name, p=range_name, at="float",
+                       min=min, max=max, dv=dmin, k=0)
+            pm.addAttr(driver, ln=max_name, p=range_name, at="float",
+                       min=min, max=max, dv=dmax, k=0)
+
+            name = v["sdk"].replace("SDK", "RMP")
+            remap = pm.createNode("remapValue", n=name)
+            remap.inputMin.set(min)
+            remap.inputMax.set(max)
+
+            sdk.output >> remap.inputValue
+            remap.outValue >> v["sdk"].attr(driven_attr)
+
+            remap.vl[0].vlp.set(0)
+            driver.attr(min_name) >> remap.vl[0].vlfv
+
+            remap.vl[1].vlp.set(0.5)
+            remap.vl[1].vlfv.set(0)
+
+            remap.vl[2].vlp.set(1)
+            driver.attr(max_name) >> remap.vl[2].vlfv
+        return True
+
+    @staticmethod
+    def flop(driver_con, sdk_null, attr="rz",
+             min=-360, max=360, dmin=-50, dmax=95):
+        pm.addAttr(driver_con, ln="flop", at="float", k=1, min=-10, max=10)
+
+        name = driver_con + "_flop_SDK"
+        sdk = pm.createNode("animCurveUL", n=name)
+
+        pm.setKeyframe(sdk, f=0, v=0, itt="linear", ott="linear")
+        pm.setKeyframe(sdk, f=10, v=max, itt="linear", ott="linear")
+        pm.setKeyframe(sdk, f=-10, v=min, itt="linear", ott="linear")
 
         name = name.replace("SDK", "RMP")
         remap = pm.createNode("remapValue", n=name)
-        remap.inputMin.set(-360)
-        remap.inputMax.set(360)
+        remap.inputMin.set(min)
+        remap.inputMax.set(max)
 
-        first_con.flop >> sdk.input
+        driver_con.flop >> sdk.input
         sdk.output >> remap.inputValue
-        remap.outValue >> first_sdk.attr(attr)
+        remap.outValue >> sdk_null.attr(attr)
+
+        range_nn = "Flop Range " + sdk_null
+        pm.addAttr(driver_con, ln="flopRange", nn=range_nn, at="float2")
+        pm.addAttr(driver_con, ln="flopMin", p="flopRange", at="float",
+                   min=min, max=max, dv=dmin, k=0)
+        pm.addAttr(driver_con, ln="flopMax", p="flopRange", at="float",
+                   min=min, max=max, dv=dmax, k=0)
 
         remap.vl[0].vlp.set(0)
-        first_con.flop_min >> remap.vl[0].vlfv
+        driver_con.flopMin >> remap.vl[0].vlfv
 
         remap.vl[1].vlp.set(0.5)
         remap.vl[1].vlfv.set(0)
 
         remap.vl[2].vlp.set(1)
-        first_con.flop_max >> remap.vl[2].vlfv
+        driver_con.flopMax >> remap.vl[2].vlfv
         return True
 
     @staticmethod
-    def curl(finger_controls, attr="rz"):
+    def curl(finger_controls, attr="rz", min=-100, max=100, dmin=-20, dmax=95):
         first = finger_controls["1"]  # metacarpophalangeal
         first_con = first["con"]
 
@@ -145,8 +192,8 @@ class Hand(object):
         sdk = pm.createNode("animCurveUL", n=name)
 
         pm.setKeyframe(sdk, f=0, v=0, itt="linear", ott="linear")
-        pm.setKeyframe(sdk, f=10, v=100, itt="linear", ott="linear")
-        pm.setKeyframe(sdk, f=-10, v=-100, itt="linear", ott="linear")
+        pm.setKeyframe(sdk, f=10, v=max, itt="linear", ott="linear")
+        pm.setKeyframe(sdk, f=-10, v=min, itt="linear", ott="linear")
 
         first_con.curl >> sdk.input
 
@@ -154,29 +201,115 @@ class Hand(object):
             if not v["sdk"]:
                 continue
 
-            ln = "curl{}_".format(k)
-            nn = "Curl {} ".format(k)
-            pm.addAttr(first_con, ln=ln + "min", nn=nn + "Min", at="float",
-                       k=0, min=-100, max=100, dv=-20)
-            pm.addAttr(first_con, ln=ln + "max", nn=nn + "Max", at="float",
-                       k=0, min=-100, max=100, dv=95)
+            range_name = "curlRange" + k
+            range_nn = "Curl Range " + v["sdk"]
+            min_name = "curlMin" + k
+            max_name = "curlMax" + k
+
+            pm.addAttr(first_con, ln=range_name, nn=range_nn, at="float2")
+            pm.addAttr(first_con, ln=min_name, p=range_name, at="float",
+                       min=min, max=max, dv=dmin, k=0)
+            pm.addAttr(first_con, ln=max_name, p=range_name, at="float",
+                       min=min, max=max, dv=dmax, k=0)
 
             name = v["sdk"].replace("SDK", "RMP")
             remap = pm.createNode("remapValue", n=name)
-            remap.inputMin.set(-100)
-            remap.inputMax.set(100)
+            remap.inputMin.set(min)
+            remap.inputMax.set(max)
 
             sdk.output >> remap.inputValue
             remap.outValue >> v["sdk"].attr(attr)
 
             remap.vl[0].vlp.set(0)
-            first_con.attr(ln + "min") >> remap.vl[0].vlfv
+            first_con.attr(min_name) >> remap.vl[0].vlfv
 
             remap.vl[1].vlp.set(0.5)
             remap.vl[1].vlfv.set(0)
 
             remap.vl[2].vlp.set(1)
-            first_con.attr(ln + "max") >> remap.vl[2].vlfv
+            first_con.attr(max_name) >> remap.vl[2].vlfv
+        return True
+
+    @staticmethod
+    def lean(finger_controls, attr="ry", min=-100, max=100, dmin=-20, dmax=20):
+        first = finger_controls["1"]  # metacarpophalangeal
+        first_con = first["con"]
+        first_sdk = first["sdk"]
+
+        pm.addAttr(first_con, ln="lean", at="float", k=1, min=-10, max=10)
+
+        name = first_con + "_lean_SDK"
+        sdk = pm.createNode("animCurveUL", n=name)
+
+        pm.setKeyframe(sdk, f=0, v=0, itt="linear", ott="linear")
+        pm.setKeyframe(sdk, f=10, v=max, itt="linear", ott="linear")
+        pm.setKeyframe(sdk, f=-10, v=min, itt="linear", ott="linear")
+
+        name = name.replace("SDK", "RMP")
+        remap = pm.createNode("remapValue", n=name)
+        remap.inputMin.set(min)
+        remap.inputMax.set(max)
+
+        first_con.lean >> sdk.input
+        sdk.output >> remap.inputValue
+        remap.outValue >> first_sdk.attr(attr)
+
+        range_nn = "Lean Range " + first["sdk"]
+        pm.addAttr(first_con, ln="leanRange", nn=range_nn, at="float2")
+        pm.addAttr(first_con, ln="leanMin", p="leanRange", at="float",
+                   min=min, max=max, dv=dmin, k=0)
+        pm.addAttr(first_con, ln="leanMax", p="leanRange", at="float",
+                   min=min, max=max, dv=dmax, k=0)
+
+        remap.vl[0].vlp.set(0)
+        first_con.leanMin >> remap.vl[0].vlfv
+
+        remap.vl[1].vlp.set(0.5)
+        remap.vl[1].vlfv.set(0)
+
+        remap.vl[2].vlp.set(1)
+        first_con.leanMax >> remap.vl[2].vlfv
+        return True
+
+    @staticmethod
+    def spread(finger_controls, attr="ry", min=-100, max=100, dmin=-20, dmax=20):
+        first = finger_controls["1"]  # carpometacarpal
+        first_con = first["con"]
+        base_sdk = finger_controls["base"]["sdk"]
+
+        pm.addAttr(first_con, ln="spread", at="float", k=1, min=-10, max=10)
+
+        name = first_con + "_spread_SDK"
+        sdk = pm.createNode("animCurveUL", n=name)
+
+        pm.setKeyframe(sdk, f=0, v=0, itt="linear", ott="linear")
+        pm.setKeyframe(sdk, f=10, v=max, itt="linear", ott="linear")
+        pm.setKeyframe(sdk, f=-10, v=min, itt="linear", ott="linear")
+
+        name = name.replace("SDK", "RMP")
+        remap = pm.createNode("remapValue", n=name)
+        remap.inputMin.set(min)
+        remap.inputMax.set(max)
+
+        first_con.spread >> sdk.input
+        sdk.output >> remap.inputValue
+        remap.outValue >> base_sdk.attr(attr)
+
+        range_nn = "Spread Range " + base_sdk
+        pm.addAttr(first_con, ln="spreadRange", nn=range_nn, at="float2")
+        pm.addAttr(first_con, ln="spreadMin", p="spreadRange", at="float",
+                   min=min, max=max, dv=dmin, k=0)
+        pm.addAttr(first_con, ln="spreadMax", p="spreadRange", at="float",
+                   min=min, max=max, dv=dmax, k=0)
+
+        remap.vl[0].vlp.set(0)
+        first_con.spreadMin >> remap.vl[0].vlfv
+
+        remap.vl[1].vlp.set(0.5)
+        remap.vl[1].vlfv.set(0)
+
+        remap.vl[2].vlp.set(1)
+        first_con.spreadMax >> remap.vl[2].vlfv
         return True
 
 
