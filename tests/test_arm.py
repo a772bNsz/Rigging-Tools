@@ -2,6 +2,7 @@ import unittest
 import pymel.core as pm
 from tools.arm import Rig, Hand
 from tests.test_shoulder import TestShoulder
+from collections import OrderedDict
 
 
 class TestArm(unittest.TestCase):
@@ -484,6 +485,17 @@ class TestHand(unittest.TestCase):
         for k, v in fingers.items():
             self.hand.finger_chain(v, name=k)
 
+        middle = pm.spaceLocator(n="middle")
+        middle.t.set([77.59, 139.11, 2.3])
+
+        outer = pm.spaceLocator(n="outer")
+        outer.t.set([75.37, 137.33, -1.16])
+
+        inner = pm.spaceLocator(n="inner")
+        inner.t.set([75.79, 137.55, 4.45])
+
+        self.palm = [middle, inner, outer]
+
     @unittest.skip("")
     def test_finger_chain(self):
         # index
@@ -657,7 +669,7 @@ class TestHand(unittest.TestCase):
 
         self.assertTrue(hand.controls, "failed to make controls")
 
-    # @unittest.skip("")
+    @unittest.skip("")
     def test_finger_attributes(self):
         hand = self.hand
 
@@ -678,6 +690,61 @@ class TestHand(unittest.TestCase):
         stretched = hand.length(driver_con, driven_objs)
 
         self.assertTrue(stretched, "stretch failed")
+
+    @unittest.skip("")
+    def test_palm_controls(self):
+        hand = self.hand
+
+        middle = pm.spaceLocator(n="middle")
+        middle.t.set([77.59, 139.11, 2.3])
+
+        outer = pm.spaceLocator(n="outer")
+        outer.t.set([75.37, 137.33, -1.16])
+
+        inner = pm.spaceLocator(n="inner")
+        inner.t.set([75.79, 137.55, 4.45])
+
+        hand_control = pm.spaceLocator(n="leftHand_CON")
+        hand_control.t.set([72.23, 148.22, 3.62])
+
+        params = {
+            "hand_control": hand_control,
+            "palm": [middle, inner, outer],
+            "fingers": ["thumb", "index", "middle", "ring", "pinky"]
+        }
+        palmed = hand.palm_attributes(**params)
+        self.assertTrue(palmed, "palm attributes failed")
+
+    @unittest.skip("")
+    def test_hand_controls(self):
+        hand = self.hand
+
+        names = ["index", "middle", "ring", "pinky"]
+        fingers = hand.finger_attributes(fingers=names)
+
+        params = {
+            "palm": self.palm,
+            "fingers": names
+        }
+        palm = hand.palm_attributes(**params)
+
+        self.assertEqual(fingers, palm, "hand controls failed")
+
+    def test_connection(self):
+        hand = self.hand
+
+        names = ["index", "middle", "ring", "pinky"]
+        fingers = hand.finger_attributes(fingers=names)
+
+        params = {
+            "palm": self.palm,
+            "fingers": names
+        }
+        palm = hand.palm_attributes(**params)
+
+        connected = hand.connect()
+
+        self.assertTrue(connected, "connection failed")
 
     @classmethod
     def tearDownClass(cls):
