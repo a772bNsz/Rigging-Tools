@@ -426,8 +426,8 @@ class TestArmHandConnection(TestArm):
 
         params = {
             "control": self.arm.result_chain["hand"],
-            "constrain": self.arm.twist_nodes["lower"]["end"],
-            "arm_settings": self.arm.controls["arm_settings"]
+            "bind_joint": self.arm.twist_nodes["lower"]["end_bind"],
+            "settings": self.arm.controls["arm_settings"],
         }
         connected = hand.connect(**params)
 

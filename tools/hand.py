@@ -474,7 +474,7 @@ class Rig:
         self.palm_side_roll()
         return const_joint
 
-    def connect(self, control=None, constrain=None):
+    def connect(self, control=None, bind_joint=None, settings=None):
         self.result_chain["hand"].setParent(self.groups["dont_touch"])
         self.groups["hand"].setParent(self.root_control)
         self.groups["const"].hide()
@@ -489,8 +489,18 @@ class Rig:
         if control:
             pm.parent(hand_loc, control)
 
-        if constrain:
-            pm.parentConstraint(self.constrain_joint, constrain, mo=1)
+        if bind_joint:
+            pm.delete(bind_joint.inputs()[0])
+            pm.parentConstraint(self.constrain_joint, bind_joint, mo=1)
+
+        if settings:
+            pm.addAttr(settings, ln="hand_fk_visibility",
+                       k=1, at="bool", dv=1)
+            settings.hand_fk_visibility >> self.groups["fk_const"].v
+
+            pm.addAttr(settings, ln="hand_con_visibility",
+                       k=1, at="bool", dv=1)
+            settings.hand_con_visibility >> self.controls["hand"]["ofs"].v
 
         lock_and_hide_all = []
         lock_and_hide_all_except_rotate = []
