@@ -88,11 +88,15 @@ class Rig:
         pm.setDrivenKeyframe(end.tx,
                              cd=length.distance,
                              dv=distance_length,
-                             v=natural_length)
+                             v=natural_length,
+                             itt="linear",
+                             ott="linear")
         pm.setDrivenKeyframe(end.tx,
                              cd=length.distance,
                              dv=distance_length * 2,
-                             v=natural_length * 2)
+                             v=natural_length * 2,
+                             itt="linear",
+                             ott="spline")
         pm.setInfinity(end.tx, poi="linear")
 
         # global scale
@@ -171,6 +175,7 @@ class Rig:
         constraint_node = \
             pm.parentConstraint(const_loc, shoulder_grp, mo=1)
 
+        pm.parent(shoulder_grp, self.root_control)
         pm.parent(const_loc, control)
         const_loc.hide()
         pm.select(cl=1)
