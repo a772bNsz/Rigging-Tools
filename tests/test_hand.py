@@ -45,9 +45,9 @@ class TestHand(unittest.TestCase):
 
         pm.select(root)
         thumb = pm.joint(p=[71.11, 137.67, 5.15])
-        pm.joint(p=[73.11, 137.19, 7.07])
-        pm.joint(p=[74.7, 136.62, 7.9])
-        pm.joint(p=[76.99, 136.14, 9.18])
+        pm.joint(p=[73.27, 136.91, 6.71])
+        pm.joint(p=[74.76, 136.39, 7.78])
+        pm.joint(p=[76.83, 135.66, 9.28])
 
         root_con = pm.spaceLocator(n="root_transform_CON")
         self.hand = Rig(root, side="left", root_control=root_con)
@@ -74,6 +74,30 @@ class TestHand(unittest.TestCase):
 
         self.palm = [middle, inner, outer]
 
+        aim_loc = pm.spaceLocator(n="aim_LOC")
+        up_loc = pm.spaceLocator(n="up_LOC")
+        up_loc.ty.set(3)
+        up_loc.setParent(aim_loc)
+
+        thumb_finger = self.hand.result_chain["thumb"].values()
+        thumb_end = thumb_finger[-1]
+        pm.matchTransform(aim_loc, thumb_end)
+
+        thumb_start = thumb_finger[0]
+        aim_const = pm.aimConstraint(aim_loc, thumb_start,
+                                     mo=1,
+                                     aimVector=[1, 0, 0],
+                                     upVector=[0, 1, 0],
+                                     worldUpType="objectRotation",
+                                     worldUpVector=[0, 1, 0],
+                                     worldUpObject=up_loc)
+
+        aim_loc.rx.set(aim_loc.rx.get() + 90)
+
+        aim_setup = aim_const.target.inputs()
+        pm.delete(aim_setup)
+        pm.makeIdentity(thumb, apply=1, r=1)
+
     @unittest.skip("")
     def test_finger_chain(self):
         # index
@@ -93,7 +117,7 @@ class TestHand(unittest.TestCase):
         hand = self.hand
         root = hand.result_chain["hand"]
 
-        #pinky
+        # pinky
         pm.select(root)
         pinky = pm.joint(p=[72.26, 138.44, -0.63])
         pm.joint(p=[76.93, 138.44, -0.9])
@@ -380,9 +404,12 @@ class TestArmHandConnection(TestArm):
 
         pm.select(root)
         thumb = pm.joint(p=[71.11, 137.67, 5.15])
-        pm.joint(p=[73.11, 137.19, 7.07])
-        pm.joint(p=[74.7, 136.62, 7.9])
-        pm.joint(p=[76.99, 136.14, 9.18])
+        pm.joint(p=[73.27, 136.91, 6.71])
+        pm.joint(p=[74.76, 136.39, 7.78])
+        pm.joint(p=[76.83, 135.66, 9.28])
+
+        root_con = pm.PyNode("root_transform_CON")
+        self.hand = Rig(root, side="left", root_control=root_con)
 
         fingers = {
             "thumb": thumb,
@@ -392,7 +419,9 @@ class TestArmHandConnection(TestArm):
             "pinky": pinky
         }
 
-        # palm locators
+        for k, v in fingers.items():
+            self.hand.finger_chain(v, name=k)
+
         middle = pm.spaceLocator(n="middle")
         middle.t.set([77.59, 139.11, 2.3])
 
@@ -404,18 +433,33 @@ class TestArmHandConnection(TestArm):
 
         self.palm = [middle, inner, outer]
 
-        # root_con = pm.spaceLocator(n="root_transform_CON")
-        root_con = pm.PyNode("root_transform_CON")
-        self.hand = Rig(root, side="left", root_control=root_con)
+        aim_loc = pm.spaceLocator(n="aim_LOC")
+        up_loc = pm.spaceLocator(n="up_LOC")
+        up_loc.ty.set(3)
+        up_loc.setParent(aim_loc)
 
-        for k, v in fingers.items():
-            self.hand.finger_chain(v, name=k)
+        thumb_finger = self.hand.result_chain["thumb"].values()
+        thumb_end = thumb_finger[-1]
+        pm.matchTransform(aim_loc, thumb_end)
+
+        aim_const = pm.aimConstraint(aim_loc, thumb,
+                                     mo=1,
+                                     aimVector=[1, 0, 0],
+                                     upVector=[0, 1, 0],
+                                     worldUpType="objectRotation",
+                                     worldUpVector=[0, 1, 0],
+                                     worldUpObject=up_loc)
+
+        aim_loc.rx.set(aim_loc.rx.get() + 90)
+        pm.delete(aim_const)
+        pm.makeIdentity(thumb, apply=1, r=1)
+        pm.delete(up_loc, aim_loc)
 
     # @unittest.skip("")
     def test_connect(self):
         hand = self.hand
 
-        names = ["index", "middle", "ring", "pinky"]
+        names = ["thumb", "index", "middle", "ring", "pinky"]
         fingers = hand.finger_attributes(fingers=names)
 
         params = {
