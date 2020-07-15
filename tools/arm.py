@@ -490,6 +490,7 @@ class Rig:
 
         # clean up
         pm.parent(self.fk_chain["upper"], self.groups["dont_touch"])
+        self.fk_chain["upper"].v.set(0)
 
         control_offsets = []
         controls = []
@@ -603,6 +604,7 @@ class Rig:
         mid_sdk = mid.tx.inputs()[0]
         end_sdk = end.tx.inputs()[0]
         stretch_blend = pm.createNode("blendColors", n=stretch_blend)
+        stretch_blend.color2B.set(0)
 
         first_length.distance >> stretch_blend.color1R
         mid_sdk.output >> stretch_blend.color2R
@@ -918,6 +920,26 @@ class Rig:
                 pm.setAttr(snap_elbow_loc.attr(at + ax), lock=1, keyable=0)
         pm.setAttr(snap_elbow_loc.v, lock=1, keyable=0)
 
+        # # add stretch attribute
+        # elbow_stretch_choice = self.snap_nodes["stretch_blend"]
+        # mid_sdk, = elbow_stretch_choice.color2R.inputs()
+        # end_sdk, = elbow_stretch_choice.color2G.inputs()
+        #
+        # pm.addAttr(arm_control, ln="stretch", k=1, at="float", min=0, max=1)
+        # ik_stretch_choice = \
+        #     pm.createNode("blendColors", n=side + "Arm_IK_stretchChoice")
+        #
+        # arm_control.stretch >> ik_stretch_choice.blender
+        # mid_sdk.output >> ik_stretch_choice.color1R
+        # end_sdk.output >> ik_stretch_choice.color1G
+        #
+        # ik_stretch_choice.outputR >> elbow_stretch_choice.color2R
+        # ik_stretch_choice.outputG >> elbow_stretch_choice.color2G
+        #
+        # ik_stretch_choice.color2R.set(ik_stretch_choice.color1R.get())
+        # ik_stretch_choice.color2G.set(ik_stretch_choice.color1G.get())
+        # ik_stretch_choice.color2B.set(0)
+
         # hybrid elbow
         hybrid_controls = self.hybrid_elbow(ik_const_group)
         ik_vis_group = self.hybrid_elbow_nodes["ik_vis"]
@@ -964,6 +986,7 @@ class Rig:
                 for ax in "xyz":
                     pm.setAttr(i.attr(at + ax), lock=1, keyable=0)
             pm.setAttr(i.v, lock=0, keyable=0, cb=1)
+        ik_const_group.v.set(0)
 
         for ax in "xyz":
             pm.setAttr(arm_control.attr("s" + ax), lock=1, keyable=0)
@@ -1084,4 +1107,5 @@ class Rig:
                 for ax in "xyz":
                     pm.setAttr(i.attr(at + ax), lock=1, keyable=0)
         result_const_group.v.setKeyable(0)
+        base_ik_const_group.v.set(0)
         return True
