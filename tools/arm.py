@@ -457,9 +457,11 @@ class Rig:
         driven = driven.tx
         driver = driver.length
 
-        pm.setDrivenKeyframe(driven, cd=driver)
+        pm.setDrivenKeyframe(driven, cd=driver,
+                             itt="spline", ott="spline")
         pm.setInfinity(driven, poi="linear")
-        pm.setDrivenKeyframe(driven, cd=driver, dv=0, v=0)
+        pm.setDrivenKeyframe(driven, cd=driver,
+                             dv=0, v=0, itt="spline", ott="spline")
         return True
 
     def fk(self):
@@ -533,16 +535,20 @@ class Rig:
 
         # --- SDK for first limb
         pm.setDrivenKeyframe(
-            mid.tx, cd=length.distance, dv=sum_length, v=limb1_length)
+            mid.tx, cd=length.distance, dv=sum_length, v=limb1_length,
+            itt="spline", ott="spline")
         pm.setDrivenKeyframe(
-            mid.tx, cd=length.distance, dv=sum_length * 2, v=limb1_length * 2)
+            mid.tx, cd=length.distance, dv=sum_length * 2, v=limb1_length * 2,
+            itt="spline", ott="spline")
         pm.setInfinity(mid.tx, poi="linear")
 
         # --- SDK for second limb
         pm.setDrivenKeyframe(
-            end.tx, cd=length.distance, dv=sum_length, v=limb2_length)
+            end.tx, cd=length.distance, dv=sum_length, v=limb2_length,
+            itt="spline", ott="spline")
         pm.setDrivenKeyframe(
-            end.tx, cd=length.distance, dv=sum_length * 2, v=limb2_length * 2)
+            end.tx, cd=length.distance, dv=sum_length * 2, v=limb2_length * 2,
+            itt="spline", ott="spline")
         pm.setInfinity(end.tx, poi="linear")
 
         # global scale
