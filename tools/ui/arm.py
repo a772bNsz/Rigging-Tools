@@ -51,6 +51,9 @@ class MyWindow(QWidget):
         self.left_arm = None
         self.right_arm = None
         self.locators = {}
+        self.hand = None
+        self.left_hand = None
+        self.right_hand = None
 
     def import_ui(self):
         """
@@ -88,31 +91,39 @@ class MyWindow(QWidget):
         self.ui.arm_left_btn.clicked.connect(
             lambda x="left": self.rig_arm(x))
 
-        # self.ui.setup_right_btn.clicked.connect(
-        #     lambda x="right": self.setup_hand(x))
-        # self.ui.setup_mid_btn.clicked.connect(
-        #     lambda x="": self.setup_hand(x))
-        # self.ui.setup_left_btn.clicked.connect(
-        #     lambda x="left": self.setup_hand(x))
-        #
-        # self.ui.hand_right_btn.clicked.connect(
-        #     lambda x="right": self.rig_hand(x))
-        # self.ui.hand_mid_btn.clicked.connect(
-        #     lambda x="": self.rig_hand(x))
-        # self.ui.hand_left_btn.clicked.connect(
-        #     lambda x="left": self.rig_hand(x))
+        self.ui.setup_right_btn.clicked.connect(
+            lambda x="right": self.setup_hand(x))
+        self.ui.setup_mid_btn.clicked.connect(
+            lambda x="": self.setup_hand(x))
+        self.ui.setup_left_btn.clicked.connect(
+            lambda x="left": self.setup_hand(x))
+
+        self.ui.hand_right_btn.clicked.connect(
+            lambda x="right": self.rig_hand(x))
+        self.ui.hand_mid_btn.clicked.connect(
+            lambda x="": self.rig_hand(x))
+        self.ui.hand_left_btn.clicked.connect(
+            lambda x="left": self.rig_hand(x))
         return
 
     def rig_hand(self, side):
-        controls = []
-        i = self.ui.space_switch_lsw.count()
-        for e in range(i):
-            controls += [pm.PyNode(self.ui.space_switch_lsw.item(e).text())]
+        side = side if "" == side else side + "_"
+        hand = getattr(self, side + "hand")
 
-        root = pm.ls(sl=1)[0]
-        root_con = controls[-1]
-        hand = Hand(root, side=side, root_control=root_con)
+        # setup_hand() cleanup
+        thumb = hand.result_chain["thumb"]
 
+        thumb_start = thumb["base"]
+        aim_setup = thumb_start.inputs(type="aimConstraint")[0]
+        aim_setup = aim_setup.target.inputs()
+        pm.delete(aim_setup)
+        pm.makeIdentity(thumb_start, apply=1, r=1)
+
+        palm_locators_group = self.locators[0].getParent()
+        pm.parent(self.locators, w=1)
+        pm.delete(palm_locators_group)
+
+        # rig_hand()
         names = ["index", "middle", "ring", "pinky"]
         hand.finger_attributes(fingers=names)
 
@@ -121,16 +132,69 @@ class MyWindow(QWidget):
             "fingers": names
         }
         hand.palm_attributes(**params)
-        arm = getattr(self, side + "arm")
-        params = {
-            "control": arm.result_chain["hand"],
-            "bind_joint": arm.twist_nodes["lower"]["end_bind"],
-            "settings": arm.controls["arm_settings"],
-        }
+
+        params = {}
+        try:
+            arm = getattr(self, side + "arm")
+            params = {
+                "control": arm.result_chain["hand"],
+                "bind_joint": arm.twist_nodes["lower"]["end_bind"],
+                "settings": arm.controls["arm_settings"],
+            }
+        except:
+            pass
         hand.connect(**params)
         return
 
-    def setup_hand(self):
+    def setup_hand(self, side):
+        hand_joint = pm.ls(sl=1)[0]
+        pm.select(cl=1)
+
+        root = pm.joint(p=[68.17, 138.49, 2.02])
+
+        pm.select(root)
+        pinky = pm.joint(p=[72.26, 138.44, -0.63], n="pinky")
+        pm.joint(p=[76.93, 138.44, -0.9])
+        pm.joint(p=[79.19, 138.44, -0.9])
+        pm.joint(p=[81.26, 138.44, -0.9])
+        pm.joint(p=[83.04, 138.44, -0.9])
+
+        pm.select(root)
+        ring = pm.joint(p=[72.32, 138.85, 0.79], n="ring")
+        pm.joint(p=[77.23, 138.85, 0.67])
+        pm.joint(p=[80.56, 138.85, 0.67])
+        pm.joint(p=[83.09, 138.85, 0.67])
+        pm.joint(p=[85.03, 138.85, 0.67])
+
+        pm.select(root)
+        middle = pm.joint(p=[72.32, 139.11, 2.14], n="middle")
+        pm.joint(p=[77.59, 139.11, 2.3])
+        pm.joint(p=[81.01, 139.11, 2.3])
+        pm.joint(p=[83.58, 139.11, 2.3])
+        pm.joint(p=[85.66, 139.11, 2.3])
+
+        pm.select(root)
+        index = pm.joint(p=[72.23, 139.11, 3.62], n="index")
+        pm.joint(p=[77.74, 139.11, 3.87])
+        pm.joint(p=[80.85, 139.11, 3.87])
+        pm.joint(p=[83.39, 139.11, 3.87])
+        pm.joint(p=[85.33, 139.11, 3.87])
+
+        pm.select(root)
+        thumb = pm.joint(p=[71.11, 137.67, 5.15], n="thumb")
+        pm.joint(p=[73.27, 136.91, 6.71])
+        pm.joint(p=[74.76, 136.39, 7.78])
+        pm.joint(p=[76.83, 135.66, 9.28])
+
+        fingers = {
+            "thumb": thumb,
+            "index": index,
+            "middle": middle,
+            "ring": ring,
+            "pinky": pinky
+        }
+
+        # palm locators
         middle = pm.spaceLocator(n="middle")
         middle.t.set([77.59, 139.11, 2.3])
 
@@ -141,7 +205,45 @@ class MyWindow(QWidget):
         inner.t.set([75.79, 137.55, 4.45])
 
         self.locators = [middle, inner, outer]
-        pm.select(self.locators)
+
+        grp = pm.group(self.locators)
+        grp.setParent(root)
+        pm.matchTransform(root, hand_joint, pos=1)
+
+        if "right" == side:
+            pass
+
+        controls = []
+        i = self.ui.space_switch_lsw.count()
+        for e in range(i):
+            controls += [pm.PyNode(self.ui.space_switch_lsw.item(e).text())]
+
+        root_con = controls[-1]
+        hand = Hand(root, side=side, root_control=root_con)
+        side = side if "" == side else side + "_"
+        setattr(self, side + "hand", hand)
+
+        for k, v in fingers.items():
+            hand.finger_chain(v, name=k)
+
+        aim_loc = pm.spaceLocator(n="aim_LOC")
+        up_loc = pm.spaceLocator(n="up_LOC")
+        up_loc.ty.set(3)
+        up_loc.setParent(aim_loc)
+
+        thumb_finger = hand.result_chain["thumb"].values()
+        thumb_end = thumb_finger[-1]
+        pm.matchTransform(aim_loc, thumb_end)
+
+        thumb_start = thumb_finger[0]
+        pm.aimConstraint(aim_loc, thumb_start,
+                         mo=1,
+                         aimVector=[1, 0, 0],
+                         upVector=[0, 1, 0],
+                         worldUpType="objectRotation",
+                         worldUpVector=[0, 1, 0],
+                         worldUpObject=up_loc)
+        pm.select(aim_loc)
         return
 
     def rig_shoulder(self, side):
@@ -172,7 +274,7 @@ class MyWindow(QWidget):
                 break
 
         if add:
-            pm.select(shoulder.groups["shoulder"])
+            pm.select(shoulder.groups["attach"])
             self._add_list_widget_item()
             pm.select(cl=1)
 

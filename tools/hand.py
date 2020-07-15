@@ -311,7 +311,7 @@ class Rig:
             sdk.output >> driven
         return True
 
-    def finger_attributes(self, thumb=1, fingers=[]):
+    def finger_attributes(self, fingers=[]):
         spread = {
             "index": {"dmin": -2, "dmax": 10},
             "middle": {"dmin": 0, "dmax": 0},
@@ -325,32 +325,19 @@ class Rig:
 
             driver_con = finger_controls["1"]["con"]
             sdk_null = finger_controls["1"]["sdk"]
-
-            self.flop(driver_con, sdk_null)
-
             sdk_nulls = [v["sdk"] for v in finger_controls.values()[2:-1]]
-            self.curl(driver_con, sdk_nulls)
-            self.spread(finger_controls, **spread[name])
 
-            if "pinky" == name:
-                self.lean(finger_controls, dmin=-50)
+            if "thumb" == name:
+                self.flop(driver_con, sdk_null, dmin=-20, dmax=70)
+                self.curl(driver_con, sdk_nulls, dmin=-20, dmax=60)
             else:
+                self.flop(driver_con, sdk_null)
+                self.curl(driver_con, sdk_nulls)
+                self.spread(finger_controls, **spread[name])
                 self.lean(finger_controls)
 
-            driven_objs = [v for v in finger_controls.values()[2:]]
-            self.length(driver_con, driven_objs)
-
-        if thumb:
-            name = "thumb"
-            finger_chain = self.result_chain[name]
-            finger_controls = self.finger_controls(finger_chain, name=name)
-
-            driver_con = finger_controls["1"]["con"]
-            sdk_null = finger_controls["base"]["sdk"]
-            self.flop(driver_con, sdk_null, attr="ry", dmin=15, dmax=-30)
-
-            sdk_nulls = [v["sdk"] for v in finger_controls.values()[1:-1]]
-            self.curl(driver_con, sdk_nulls, attr="ry", dmin=10, dmax=-80)
+            if "pinky" == name:
+                driver_con.leanMin.set(-50)
 
             driven_objs = [v for v in finger_controls.values()[2:]]
             self.length(driver_con, driven_objs)
@@ -461,9 +448,6 @@ class Rig:
         pm.parentConstraint(const_joint, self.groups["fk_const"], mo=1)
         pm.parentConstraint(const_joint, self.result_chain["hand"], mo=1)
         pm.parentConstraint(const_joint, ofs, mo=1)
-
-        if thumb:
-            fingers.insert(0, "thumb")
 
         for name in fingers:
             straight_start_joint, straight_handle = self.finger_ik(name)
