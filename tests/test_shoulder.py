@@ -63,7 +63,7 @@ class TestShoulder(unittest.TestCase):
         self.assertTrue(shoulder.connect_nodes,
                         "connection failed")
 
-    @unittest.skip("")
+    @unittest.skipIf(__name__ == "__main__", "")
     def test_right(self):
         left_root = self.shoulder.result_chain["root"]
         root = pm.mirrorJoint(left_root, mirrorYZ=1, mirrorBehavior=1)[0]
