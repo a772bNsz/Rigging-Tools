@@ -60,6 +60,33 @@ class TestArm(unittest.TestCase):
         self.assertTrue(spaces,
                         "connection failed")
 
+    # @unittest.skip("")
+    def test_right(self):
+        left_root = self.arm.result_chain["upper"]
+        root = pm.mirrorJoint(left_root, mirrorYZ=1, mirrorBehavior=1)[0]
+        pm.parent(root, w=1)
+        root = pm.PyNode(root)
+        root_con = pm.PyNode("root_transform_CON")
+
+        # # mirroring cleanup
+        # dup_chest_control = pm.listRelatives("rightShoulder_const_LOC", p=1)
+        # pm.parent("rightShoulder_const_LOC", w=1)
+        # pm.delete("ikHandle1", dup_chest_control)
+        # pm.parent("rightShoulder_const_LOC", "chest_CON")
+
+        arm = Rig(root, side="right", root_control=root_con)
+        arm.twist()
+        arm.ikfk_switch()
+        arm.fk()
+        arm.ik()
+
+        controls = self.controls
+        controls[0] = pm.spaceLocator(n="rightShoulder_CON")
+        controls[0].translate.set([17.19, 138.49, 0.93])
+        spaces = arm.connect(controls)
+        self.assertTrue(spaces,
+                        "connection failed")
+
     @unittest.skip("")
     def test_ikfk_switch(self):
         arm = self.arm
@@ -398,7 +425,7 @@ class TestShoulderArmConnection(TestShoulder):
 
         self.arm = Rig(root, side="left", root_control=root_con)
 
-    # @unittest.skip("")
+    @unittest.skip("")
     def test_connect(self):
         arm = self.arm
         arm.twist()
@@ -412,11 +439,49 @@ class TestShoulderArmConnection(TestShoulder):
         self.assertTrue(spaces,
                         "connection failed")
 
+    @unittest.skip("")
+    def test_right(self):
+        # arm = self.arm
+        # arm.twist()
+        # arm.ikfk_switch()
+        # arm.fk()
+        # arm.ik()
+        #
+        # controls = self.controls
+        # spaces = arm.connect(controls)
+
+        # right side
+        left_root = self.arm.result_chain["upper"]
+        super(TestShoulderArmConnection, self).test_right()
+
+        root = pm.mirrorJoint(left_root, mirrorYZ=1, mirrorBehavior=1)[0]
+        pm.parent(root, w=1)
+        root = pm.PyNode(root)
+        root_con = pm.PyNode("root_transform_CON")
+
+        # mirroring cleanup
+        dup_chest_control = pm.listRelatives("rightShoulder_const_LOC", p=1)
+        pm.parent("rightShoulder_const_LOC", w=1)
+        pm.delete("ikHandle1", dup_chest_control)
+        pm.parent("rightShoulder_const_LOC", "chest_CON")
+
+        arm = Rig(root, side="right", root_control=root_con)
+        arm.twist()
+        arm.ikfk_switch()
+        arm.fk()
+        arm.ik()
+
+        controls = self.controls
+        controls[0] = pm.PyNode("rightShoulder_attach_GRP")
+        spaces = arm.connect(controls)
+        self.assertTrue(spaces,
+                        "connection failed")
+
     @classmethod
     def tearDownClass(cls):
         try:
             from tools.control_shapes import ControlShapes
-            json_file = __file__.split("tests")[0] + "/results/arm.json"
+            json_file = __file__.split("tests")[0] + "/results/arms.json"
             cs = ControlShapes()
             cs.load(json_file=json_file)
         except:

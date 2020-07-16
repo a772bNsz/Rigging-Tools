@@ -27,8 +27,9 @@ class Rig:
         names["end"] = "hand_end"
 
         result_chain = [root] + root.getChildren(ad=1)[::-1]
-        pm.joint(result_chain[0], e=1, oj="xyz", sao="ydown", ch=1, zso=1)
-        result_chain[-1].jointOrient.set(0, 0, 0)
+        if "right" != side:
+            pm.joint(result_chain[0], e=1, oj="xyz", sao="ydown", ch=1, zso=1)
+            result_chain[-1].jointOrient.set(0, 0, 0)
 
         ik_chain, fk_chain = [pm.duplicate(result_chain) for i in range(2)]
 
@@ -883,6 +884,21 @@ class Rig:
         length = self.stretch_and_bend_ik_nodes["length"]
         pm.parent(length_start, length, base_ik_const_group)
 
+        if "right" == side:
+            global_scale_node = self.stretch_and_bend_ik_nodes["scale"]
+            name = "rightArm_inverse_DIV"
+            inverse_node = pm.createNode("floatMath", n=name)
+            inverse_node.operation.set(2)  # multiply
+            inverse_node.floatB.set(-1)
+
+            self.root_control.sx >> inverse_node.floatA
+            inverse_node.outFloat >> global_scale_node.floatB
+
+            sdks = global_scale_node.outFloat.outputs()
+            for sdk in sdks:
+                sdk.setPostInfinityType("constant")
+                sdk.setPreInfinityType("linear")
+
         # snappable elbow
         params = {
             "controls": {
@@ -913,6 +929,15 @@ class Rig:
 
         snap_length_nodes = self.snap_nodes["length"].values()
         pm.parent(snap_length_nodes, base_ik_const_group)
+
+        if "right" == side:
+            global_scale_node = self.stretch_and_bend_ik_nodes["scale"]
+            name = global_scale_node.replace("Normalize", "Inverse")
+            inverse_node = pm.PyNode(name)
+
+            snap_scale_nodes = self.snap_nodes["scale"].values()
+            for length_node in snap_scale_nodes:
+                inverse_node.outFloat >> length_node.floatB
 
         snap_elbow_loc = self.snap_nodes["locators"]["snap"]
         for at in "trs":
