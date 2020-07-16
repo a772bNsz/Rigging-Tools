@@ -63,6 +63,22 @@ class TestShoulder(unittest.TestCase):
         self.assertTrue(shoulder.connect_nodes,
                         "connection failed")
 
+    @unittest.skip("")
+    def test_right(self):
+        left_root = self.shoulder.result_chain["root"]
+        root = pm.mirrorJoint(left_root, mirrorYZ=1, mirrorBehavior=1)[0]
+        pm.parent(root, w=1)
+        root = pm.PyNode(root)
+
+        root_con = pm.PyNode("root_transform_CON")
+        control = pm.spaceLocator(n="chest_CON")
+        control.t.set(0.0, 139.22, 0.7)
+
+        shoulder = Rig(root, side="right", root_control=root_con)
+        shoulder.ik()
+        shoulder.connect(control=control)
+        self.assertTrue(shoulder.connect_nodes, "connection failed")
+
     @classmethod
     def tearDownClass(cls):
         try:
