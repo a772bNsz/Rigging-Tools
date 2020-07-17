@@ -60,33 +60,6 @@ class TestArm(unittest.TestCase):
         self.assertTrue(spaces,
                         "connection failed")
 
-    # @unittest.skip("")
-    def test_right(self):
-        left_root = self.arm.result_chain["upper"]
-        root = pm.mirrorJoint(left_root, mirrorYZ=1, mirrorBehavior=1)[0]
-        pm.parent(root, w=1)
-        root = pm.PyNode(root)
-        root_con = pm.PyNode("root_transform_CON")
-
-        # # mirroring cleanup
-        # dup_chest_control = pm.listRelatives("rightShoulder_const_LOC", p=1)
-        # pm.parent("rightShoulder_const_LOC", w=1)
-        # pm.delete("ikHandle1", dup_chest_control)
-        # pm.parent("rightShoulder_const_LOC", "chest_CON")
-
-        arm = Rig(root, side="right", root_control=root_con)
-        arm.twist()
-        arm.ikfk_switch()
-        arm.fk()
-        arm.ik()
-
-        controls = self.controls
-        controls[0] = pm.spaceLocator(n="rightShoulder_CON")
-        controls[0].translate.set([17.19, 138.49, 0.93])
-        spaces = arm.connect(controls)
-        self.assertTrue(spaces,
-                        "connection failed")
-
     @unittest.skip("")
     def test_ikfk_switch(self):
         arm = self.arm
@@ -490,6 +463,53 @@ class TestShoulderArmConnection(TestShoulder):
         print ">>>>> TEARDOWN"
 
 
+class TestLeftRightArms(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        print ">>>>> SETUP"
+
+    def setUp(self):
+        pm.newFile(f=1)
+
+        root_con = pm.spaceLocator(n="root_transform_CON")
+        self.controls = [root_con]
+
+        left_root = pm.joint(p=[17.19, 138.49, 0.94], a=1)
+        pm.joint(p=[40.69, 138.49, 1.44], a=1)
+        pm.joint(p=[68.17, 138.49, 2.02], a=1)
+        pm.joint(p=[75.66, 138.49, 2.18], a=1)
+
+        self.left_arm = Rig(left_root, side="left", root_control=root_con)
+
+        right_root = pm.PyNode(
+            pm.mirrorJoint(left_root, mirrorYZ=1, mirrorBehavior=1)[0])
+        pm.parent(right_root, w=1)
+
+        self.right_arm = Rig(right_root, side="right", root_control=root_con)
+
+    def test_both_arms(self):
+        for side in ["left", "right"]:
+            arm = getattr(self, side + "_arm")
+            arm.twist()
+            arm.ikfk_switch()
+            arm.fk()
+            arm.ik()
+            arm.connect(self.controls)
+        self.assertTrue(True, "both arms failed")
+
+    @classmethod
+    def tearDownClass(cls):
+        try:
+            from tools.control_shapes import ControlShapes
+            json_file = __file__.split("tests")[0] + "/results/arms.json"
+            cs = ControlShapes()
+            cs.load(json_file=json_file)
+        except:
+            pass
+        pm.saveAs("result.ma", type="mayaAscii")
+        print ">>>>> TEARDOWN"
+
+
 if __name__ == "__main__":
     from maya import standalone, cmds
 
@@ -498,6 +518,6 @@ if __name__ == "__main__":
 
     # unittest.main(verbosity=3, failfast=1)
 
-    test_case = TestShoulderArmConnection
+    test_case = TestLeftRightArms
     suite = unittest.TestLoader().loadTestsFromTestCase(test_case)
     runner = unittest.TextTestRunner(verbosity=3, failfast=1).run(suite)
