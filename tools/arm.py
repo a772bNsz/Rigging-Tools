@@ -931,8 +931,7 @@ class Rig:
         pm.parent(snap_length_nodes, base_ik_const_group)
 
         if "right" == side:
-            global_scale_node = self.stretch_and_bend_ik_nodes["scale"]
-            name = global_scale_node.replace("Normalize", "Inverse")
+            name = "rightArm_inverse_DIV"
             inverse_node = pm.PyNode(name)
 
             snap_scale_nodes = self.snap_nodes["scale"].values()

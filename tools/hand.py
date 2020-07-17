@@ -408,7 +408,7 @@ class Rig:
         end_joint.drawStyle.set(2)
         return start_joint, handle
 
-    def palm_attributes(self, palm, fingers=[], thumb=1):
+    def palm_attributes(self, palm, fingers=[]):
         side = self.side
         name = "hand" if "" == side else side + "Hand"
 
@@ -455,6 +455,16 @@ class Rig:
             pm.parentConstraint(straight_start_joint, offset, mo=1)
 
         self.palm_raise()
+        if "right" == side:
+            name = "rightHand_inverse_DIV"
+            inverse_node = pm.createNode("floatMath", n=name)
+            inverse_node.operation.set(2)  # multiply
+            inverse_node.floatB.set(-1)
+
+            palm_raise_sdk = hand_control.palmRaise.outputs()[0]
+            hand_control.palmRaise >> inverse_node.floatA
+            inverse_node.outFloat >> palm_raise_sdk.input
+
         self.palm_side_roll()
         return const_joint
 
