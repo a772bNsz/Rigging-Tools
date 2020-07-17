@@ -4,6 +4,7 @@ from pymel.util.path import path
 import pymel.core as pm
 
 from tools import color_shapes, control_shapes
+
 reload(color_shapes)
 reload(control_shapes)
 
@@ -58,7 +59,7 @@ class MyWindow(QtWidgets.QWidget):
         default_btn = None
         for r in range(rows):
             for c in range(columns):
-                i = (r*columns) + c + 1
+                i = (r * columns) + c + 1
                 if i >= 32:
                     default_btn = QtWidgets.QPushButton("")
                     default_btn.setStyleSheet("""
@@ -69,7 +70,7 @@ class MyWindow(QtWidgets.QWidget):
 
                 buttons[i] = QtWidgets.QPushButton("")
 
-                rgb = map(lambda x: int(x*255), pm.colorIndex(i, q=1))
+                rgb = map(lambda x: int(x * 255), pm.colorIndex(i, q=1))
                 buttons[i].setStyleSheet(
                     "background-color: rgb({}, {}, {})".format(*rgb))
 
@@ -94,6 +95,190 @@ class MyWindow(QtWidgets.QWidget):
             for c in range(columns):
                 buttons += [QtWidgets.QPushButton("")]
                 self.ui.shape_grd.addWidget(buttons[-1], r, c)
+
+        thumbnails = path(
+            __file__.split("/ui")[0] + "/shape_thumbnails").files("*.tiff")
+        for f, pbn in zip(thumbnails, buttons):
+            pbn.setMinimumHeight(60)
+            pbn.setStyleSheet("background-color: black")
+
+            ico = QtGui.QIcon()
+            ico.addFile(f)
+
+            pbn.setIcon(ico)
+            pbn.setIconSize(QtCore.QSize(60, 60))
+
+            name = f.name.split(".")[0]
+            pbn.clicked.connect(lambda x=name: self._connect_shape_buttons(x))
+        return buttons
+
+    def _connect_color_buttons(self, index):
+        self.color_shapes.sel = pm.ls(sl=1)
+        self.color_shapes.index = index
+        self.color_shapes.by_index()
+        return
+
+    def _connect_shape_buttons(self, name):
+        selected = pm.ls(sl=1)
+
+        if selected:
+            shape_and_colors = {}
+            for sel in selected:
+                sel_shape = sel.getShapes()[0]
+                if sel_shape.overrideEnabled.get():
+                    shape_and_colors[sel] = sel_shape.overrideColor.get()
+
+            for sel in selected:
+                pm.select(sel)
+                getattr(self.control_shapes, name)()
+                try:
+                    self.color_shapes.sel = sel
+                    self.color_shapes.index = shape_and_colors[sel]
+                    self.color_shapes.by_index()
+                except:
+                    pass
+        else:
+            selected = getattr(self.control_shapes, name)()
+        pm.select(selected)
+        return
+
+    def save_file(self):
+        controls = pm.ls(sl=1)
+
+        location = path(__file__).dirname().replace("tools", "results")
+        json_file = path(QtWidgets.QFileDialog.getSaveFileName(
+            self, "Save JSON", location, "JSON files (*.json)")[0])
+
+        if json_file:
+            if not json_file.endswith(".json"):
+                json_file = path(json_file + ".json")
+            self.control_shapes.save(json_file=json_file, controls=controls)
+        return json_file
+
+    def load_file(self):
+        location = path(__file__).dirname().replace("tools", "results")
+        json_file, _filter = QtWidgets.QFileDialog.getOpenFileName(
+            self, "Load JSON", location, "JSON files (*.json)")
+
+        if json_file:
+            self.control_shapes.load(json_file=path(json_file))
+
+            import json
+            with open(json_file) as f:
+                data = json.load(f)
+        return data
+
+
+def get_window2():
+    global mw
+    try:
+        mw.ui.close()
+    except:
+        pass
+
+    mw = MyWindow2()
+    mw.show()
+    return mw
+
+
+class MyWindow2(QtWidgets.QWidget):
+    def __init__(self):
+        super(MyWindow2, self).__init__()
+
+        self.color_shapes = color_shapes.ColorShapes()
+        self.control_shapes = control_shapes.ControlShapes()
+
+        self.color_grd, self.shape_grd, self.save_btn, self.load_btn = \
+            self.coded_ui()
+
+        self.preset_buttons = self.color_buttons = self.shape_buttons = []
+        self.init_ui()
+
+        self.json_file = None
+
+    def coded_ui(self):
+        vertical_layout = QtWidgets.QVBoxLayout()
+        self.setLayout(vertical_layout)
+
+        self.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
+        self.setMinimumSize(340, 550)
+        self.setMaximumSize(340, 550)
+        self.setWindowTitle("Color and Shapes")
+
+        # color grid section
+        color_grd = QtWidgets.QGridLayout()
+        color_grd.setObjectName("color_grd")
+        vertical_layout.addLayout(color_grd)
+        color_grd.setContentsMargins(0, 0, 0, 10)
+        color_grd.setSpacing(0)
+
+        # shape grid section
+        shape_grd = QtWidgets.QGridLayout()
+        shape_grd.setObjectName("shape_grd")
+        vertical_layout.addLayout(shape_grd)
+        shape_grd.setSpacing(0)
+
+        # save and load buttons
+        horizontal_layout = QtWidgets.QHBoxLayout()
+        vertical_layout.addLayout(horizontal_layout)
+
+        save_btn = QtWidgets.QPushButton("Save")
+        load_btn = QtWidgets.QPushButton("Load")
+        horizontal_layout.addWidget(save_btn)
+        horizontal_layout.addWidget(load_btn)
+        return color_grd, shape_grd, save_btn, load_btn
+
+    def init_ui(self):
+        self._load_colors()
+        self._load_shapes()
+
+        self.save_btn.clicked.connect(self.save_file)
+        self.load_btn.clicked.connect(self.load_file)
+        return
+
+    def _load_colors(self):
+        buttons = {}
+        rows = 4
+        columns = 8
+        default_btn = None
+        for r in range(rows):
+            for c in range(columns):
+                i = (r * columns) + c + 1
+                if i >= 32:
+                    default_btn = QtWidgets.QPushButton("")
+                    default_btn.setStyleSheet("""
+                        background-color: Transparent;
+                        """)
+                    self.color_grd.addWidget(default_btn, r, c)
+                    break
+
+                buttons[i] = QtWidgets.QPushButton("")
+
+                rgb = map(lambda x: int(x * 255), pm.colorIndex(i, q=1))
+                buttons[i].setStyleSheet(
+                    "background-color: rgb({}, {}, {})".format(*rgb))
+
+                self.color_grd.addWidget(buttons[i], r, c)
+
+        for i, pbn in buttons.items():
+            pbn.clicked.connect(lambda x=i: self._connect_color_buttons(x))
+
+        default_btn.clicked.connect(self._no_color)
+        return buttons
+
+    def _no_color(self):
+        self.color_shapes.sel = pm.ls(sl=1)
+        self.color_shapes.default()
+        return
+
+    def _load_shapes(self):
+        buttons = []
+        rows = 6
+        columns = 5
+        for r in range(rows):
+            for c in range(columns):
+                buttons += [QtWidgets.QPushButton("")]
+                self.shape_grd.addWidget(buttons[-1], r, c)
 
         thumbnails = path(
             __file__.split("/ui")[0] + "/shape_thumbnails").files("*.tiff")
