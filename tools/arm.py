@@ -1067,7 +1067,8 @@ class Rig:
         # spaces
         spaces = OrderedDict()  # shoulder = leftArm_shoulderSpace_LOC
         side = self.side
-        for con in controls:
+        innermost_space = None
+        for i, con in enumerate(controls):
             name = con
 
             if side in str(con):
@@ -1083,8 +1084,9 @@ class Rig:
 
             spaces[key] = loc
 
-        # the inner most space drives IK and FK translation
-        innermost_space = spaces["shoulder"]
+            if i == 0:
+                # the inner most space drives IK and FK translation
+                innermost_space = loc
 
         point_constraint = None
         for k in ["base_ik", "fk", "result"]:
