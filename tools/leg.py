@@ -96,6 +96,16 @@ class Foot(object):
         foot_control = self.foot_control
         pm.addAttr(foot_control, ln="toeSpin", at="doubleAngle", k=1)
         foot_control.toeSpin >> toe_loc.ry
+
+        if self.side == "right":
+            inverse_node = "rightFoot_toeSpin_Inverse_DIV"
+            inverse_node = \
+                pm.createNode("animBlendNodeAdditiveRotation", n=inverse_node)
+
+            inverse_node.weightA.set(-1)
+            inverse_node.weightB.set(0)
+            foot_control.toeSpin >> inverse_node.inputAX
+            inverse_node.outputX >> toe_loc.ry
         return True
     
     def _lean(self):
@@ -103,6 +113,16 @@ class Foot(object):
         foot_control = self.foot_control
         pm.addAttr(foot_control, ln="lean", at="doubleAngle", k=1)
         foot_control.lean >> toe_loc.rz
+
+        if self.side == "right":
+            inverse_node = "rightFoot_lean_Inverse_DIV"
+            inverse_node = \
+                pm.createNode("animBlendNodeAdditiveRotation", n=inverse_node)
+
+            inverse_node.weightA.set(-1)
+            inverse_node.weightB.set(0)
+            foot_control.lean >> inverse_node.inputAX
+            inverse_node.outputX >> toe_loc.rz
         return True
     
     def _tilt(self):
@@ -117,16 +137,16 @@ class Foot(object):
 
         foot_control = self.foot_control
         pm.addAttr(foot_control, ln="tilt",
-                   at="doubleAngle", k=1, min=-90, max=90)
+                   at="double", k=1, min=-90, max=90)
 
         pm.setDrivenKeyframe(inner_loc.rz, cd=foot_control.tilt, dv=0, v=0)
         pm.setDrivenKeyframe(outer_loc.rz, cd=foot_control.tilt, dv=0, v=0)
 
         if "right" == self.side:
             pm.setDrivenKeyframe(
-                inner_loc.rz, cd=foot_control.tilt, dv=90, v=-90)
+                inner_loc.rz, cd=foot_control.tilt, dv=-90, v=-90)
             pm.setDrivenKeyframe(
-                outer_loc.rz, cd=foot_control.tilt, dv=-90, v=90)
+                outer_loc.rz, cd=foot_control.tilt, dv=90, v=90)
         else:
             pm.setDrivenKeyframe(
                 inner_loc.rz, cd=foot_control.tilt, dv=-90, v=90)
@@ -250,7 +270,9 @@ class Rig(Foot):
         for jnt, name in zip(result_chain, names):
             jnt.rename("{}{}_result_JNT".format(side, name.capitalize()))
 
-        pm.joint(result_chain[0], e=1, oj="xyz", sao="xup", ch=1, zso=1)
+        if side != "right":
+            pm.joint(result_chain[0], e=1, oj="xyz", sao="xup", ch=1, zso=1)
+
         ik_chain = pm.duplicate(result_chain)
         fk_chain = pm.duplicate(result_chain)
         for ik, fk in zip(ik_chain, fk_chain):
@@ -273,7 +295,12 @@ class Rig(Foot):
     @staticmethod
     def _controls(side, result_chain, ik_chain, fk_chain):
         leg_settings = pm.spaceLocator(n=side + "Leg_settings_CON")
-        pm.parentConstraint(result_chain["foot"], leg_settings)
+        const = pm.parentConstraint(result_chain["foot"], leg_settings)
+
+        if side == "right":
+            parent_constraint = str(const) + ".target[0].targetOffsetRotateY"
+            pm.setAttr(parent_constraint, 180)
+
         pm.scaleConstraint(result_chain["foot"], leg_settings)
         controls = {"leg_settings": leg_settings}
 
@@ -512,7 +539,10 @@ class Rig(Foot):
             dv=sum_length * 2,
             v=thigh_length * 2
         )
-        pm.setInfinity(ik_chain["shin"].tx, poi="linear")
+        if side != "right":
+            pm.setInfinity(ik_chain["shin"].tx, poi="linear")
+        else:
+            pm.setInfinity(ik_chain["shin"].tx, pri="linear")
 
         # --- SDK for shin
         shin_length = ik_chain["foot"].tx.get()
@@ -528,7 +558,10 @@ class Rig(Foot):
             dv=sum_length * 2,
             v=shin_length * 2
         )
-        pm.setInfinity(ik_chain["foot"].tx, poi="linear")
+        if side != "right":
+            pm.setInfinity(ik_chain["foot"].tx, poi="linear")
+        else:
+            pm.setInfinity(ik_chain["foot"].tx, pri="linear")
 
         # Global Scale
         set_driven_keys = leg_length.distance.outputs(p=1)
@@ -542,6 +575,20 @@ class Rig(Foot):
 
         for sdk in set_driven_keys:
             normalize_scale.outFloat >> sdk
+
+        if self.side == "right":
+            name = "rightLeg_inverse_DIV"
+            inverse_node = None
+
+            if pm.objExists(name):
+                inverse_node = pm.PyNode(name)
+            else:
+                inverse_node = pm.createNode("floatMath", n=name)
+                inverse_node.operation.set(2)  # multiply
+                inverse_node.floatB.set(-1)
+                self.root_control.sy >> inverse_node.floatA
+
+            inverse_node.outFloat >> normalize_scale.floatB
         return True
 
     def _no_flip_knee(self, ik_chain, knee_loc):
@@ -560,6 +607,16 @@ class Rig(Foot):
 
         pm.addAttr(foot_control, ln="kneeTwist", at="doubleAngle", k=1)
         foot_control.kneeTwist >> no_flip_group.ry
+
+        if self.side == "right":
+            inverse_node = "rightFoot_kneeTwist_Inverse_DIV"
+            inverse_node = \
+                pm.createNode("animBlendNodeAdditiveRotation", n=inverse_node)
+
+            inverse_node.weightA.set(-1)
+            inverse_node.weightB.set(0)
+            foot_control.kneeTwist >> inverse_node.inputAX
+            inverse_node.outputX >> no_flip_group.ry
 
         # Non-uniform IK Leg Stretch
         pm.addAttr(foot_control,
@@ -637,6 +694,21 @@ class Rig(Foot):
         knee_to_foot_length.distance >> pv_scale.input1Y
         self.root_control.sy >> pv_scale.input2Y
         pv_scale.outputY >> stretch_blend.color1G
+
+        if self.side == "right":
+            name = "rightLeg_inverse_DIV"
+            inverse_node = None
+
+            if pm.objExists(name):
+                inverse_node = pm.PyNode(name)
+            else:
+                inverse_node = pm.createNode("floatMath", n=name)
+                inverse_node.operation.set(2)  # multiply
+                inverse_node.floatB.set(-1)
+                self.root_control.sy >> inverse_node.floatA
+
+            inverse_node.outFloat >> pv_scale.input2X
+            inverse_node.outFloat >> pv_scale.input2Y
         return True
 
     def _dual_knee(self):

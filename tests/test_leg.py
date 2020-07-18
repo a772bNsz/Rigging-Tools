@@ -296,11 +296,9 @@ class TestBothLegs(unittest.TestCase):
         self.left_leg = Rig(root, side="left", root_control=root_con)
 
         pm.select(cl=1)
-        root = pm.joint(p=[-8.93, 83.9, 0.93])  # thigh
-        pm.joint(p=[-8.93, 53.22, 2.37])  # shin
-        pm.joint(p=[-8.93, 11.02, -3.94])  # foot
-        pm.joint(p=[-8.93, 2.27, 7.47])  # ball
-        pm.joint(p=[-8.93, 1.82, 19.65])  # toe
+        root = pm.PyNode(
+            pm.mirrorJoint(root, mirrorYZ=1, mirrorBehavior=1)[0])
+        pm.parent(root, w=1)
 
         self.right_leg = Rig(root, side="right", root_control=root_con)
 
