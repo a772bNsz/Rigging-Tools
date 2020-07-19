@@ -7,7 +7,8 @@ from maya.OpenMayaUI import MQtUtil
 from pymel.util.path import path
 
 import pymel.core as pm
-from tools.leg import Rig
+from tools import color_shapes
+reload(color_shapes)
 
 
 def get_window():
@@ -42,10 +43,7 @@ class MyWindow(QWidget):
         self.setWindowTitle(window_title)
         self.init_ui()
 
-        self.leg = None
-        self.left_leg = None
-        self.right_leg = None
-        self.locators = {}
+        self.color = color_shapes.ColorShapes()
 
     def import_ui(self):
         """
@@ -69,52 +67,14 @@ class MyWindow(QWidget):
         self.ui.add_btn.clicked.connect(self._add_list_widget_item)
         self.ui.minus_btn.clicked.connect(self._minus_list_widget_item)
 
-        self.ui.leg_right_btn.clicked.connect(
-            lambda x="right": self.rig_leg(x))
-        self.ui.leg_mid_btn.clicked.connect(
-            lambda x="": self.rig_leg(x))
-        self.ui.leg_left_btn.clicked.connect(
-            lambda x="left": self.rig_leg(x))
+        self.ui.guides_btn.clicked.connect(self.create_guides)
+        self.ui.match_left_to_right_btn.clicked.connect(self.match)
 
-        self.ui.setup_right_btn.clicked.connect(
-            lambda x="right": self.setup_foot(x))
-        self.ui.setup_mid_btn.clicked.connect(
-            lambda x="": self.setup_foot(x))
-        self.ui.setup_left_btn.clicked.connect(
-            lambda x="left": self.setup_foot(x))
-
-        self.ui.foot_right_btn.clicked.connect(
-            lambda x="right": self.rig_foot(x))
-        self.ui.foot_mid_btn.clicked.connect(
-            lambda x="": self.rig_foot(x))
-        self.ui.foot_left_btn.clicked.connect(
-            lambda x="left": self.rig_foot(x))
+        self.ui.rig_left_btn.clicked.connect(lambda x="left": self.rig(x))
+        self.ui.rig_right_btn.clicked.connect(lambda x="right": self.rig(x))
         return
 
-    def rig_foot(self, side):
-        getattr(self, side + "_leg").ik_foot()
-        pm.select(cl=1)
-        return
-
-    def setup_foot(self, side):
-        if self.locators:
-            new_locators = getattr(self, side + "_leg").ik_foot_setup()
-            for old, new in zip(self.locators.values(), new_locators.values()):
-                position = old.getTranslation(space="world")
-                position[0] = position[0] * -1
-                new.setTranslation(position, space="world")
-            self.locators = new_locators
-
-        self.locators = getattr(self, side + "_leg").ik_foot_setup()
-
-        pm.select([self.locators[x] for x in ["heel", "inner", "outer"]])
-        return
-
-    def rig_leg(self, side):
-        if not pm.ls(sl=1):
-            pm.warning("No root joint selected.")
-            return
-
+    def rig(self, side):
         if not self.ui.space_switch_lsw.count():
             pm.warning("No spaces to connect leg rig.")
 
@@ -123,9 +83,15 @@ class MyWindow(QWidget):
         for e in range(i):
             controls += [pm.PyNode(self.ui.space_switch_lsw.item(e).text())]
 
-        root = pm.ls(sl=1)[0]
+        knee_loc = "_".join([side, "knee"])
+
+        root = pm.PyNode(side)
         root_con = controls[-1]
-        leg = Rig(root, side=side, root_control=root_con)
+
+        from tools import leg as mod
+        reload(mod)
+
+        leg = mod.Rig(root, side=side, root_control=root_con, knee_loc=knee_loc)
         leg.ikfk_switch()
         leg.fk_leg()
         leg.ik_leg(pv=1, no_flip=1)
@@ -133,16 +99,113 @@ class MyWindow(QWidget):
         leg.space_switch(controls)
         leg.clean_up()
 
-        if "right" == side:
-            self.right_leg = leg
-        elif "left" == side:
-            self.left_leg = leg
-        else:
-            self.leg = leg
+        locators = {
+            "heel": "heel_LOC",
+            "ball": "ball_LOC",
+            "toe": "toe_LOC",
+            "inner": "innerFoot_LOC",
+            "outer": "outerFoot_LOC"
+        }
+        for k, v in locators.items():
+            name = side + v[0].upper() + v[1:]
+            loc = pm.PyNode("_".join([side, k])).rename(name)
+            locators[k] = loc
+
+        leg.locators = locators
+        leg.ik_foot()
+
+        pm.delete(knee_loc)
+        return
+
+    def match(self):
+        # joints
+        left_chain = pm.PyNode("left")
+        left_chain = [left_chain] + left_chain.getChildren(ad=1)[::-1]
+
+        right_chain = pm.PyNode("right")
+        right_chain = [right_chain] + right_chain.getChildren(ad=1)[::-1]
+
+        for right, left in zip(right_chain, left_chain):
+            pos = left.getTranslation(space="world")
+            pos[0] = pos[0] * -1
+            right.setTranslation(pos, space="world")
+
+            size = left.radius.get()
+            right.radius.set(size)
+
+        # locators
+        left_locators = pm.ls("left_*", type="transform")
+        right_locators = pm.ls("right_*", type="transform")
+
+        for right, left in zip(right_locators, left_locators):
+            match = right.replace("right", "left") == left
+            if not match:
+                right = pm.spaceLocator(n=left.replace("left", "right"))
+
+                self.color.sel = right
+                self.color.index = 12  # red right
+                self.color.by_index()
+
+            pos = left.getTranslation(space="world")
+            pos[0] = pos[0] * -1
+            right.setTranslation(pos, space="world")
+
+            size = left.localScale.get()
+            right.localScale.set(size)
+        return
+    
+    @staticmethod
+    def create_guides():
+        # left
+        pm.select(cl=1)
+        root = pm.joint(p=[8.93, 83.9, 0.93], n="left")  # thigh
+        pm.joint(p=[8.93, 53.22, 2.37])  # shin
+        pm.joint(p=[8.93, 11.02, -3.94])  # foot
+        pm.joint(p=[8.93, 2.27, 7.47])  # ball
+        pm.joint(p=[8.93, 1.82, 19.65])  # toe
+
+        chain = [root] + root.getChildren(ad=1)[::-1]
+
+        locators = []
+        locators += [pm.spaceLocator(n="left_knee")]
+        pm.matchTransform(locators[-1], chain[1], pos=1)
+
+        locators += [pm.spaceLocator(n="left_heel")]
+        locators[-1].t.set(9.42, -0.16, -10.07)
+
+        locators += [pm.spaceLocator(n="left_outer")]
+        locators[-1].t.set(15.11, 0.0, 13.66)
+
+        locators += [pm.spaceLocator(n="left_inner")]
+        locators[-1].t.set(3.34, 0.0, 11.72)
+
+        locators += [pm.spaceLocator(n="left_ball")]
+        pm.matchTransform(locators[-1], chain[-2], pos=1)
+
+        locators += [pm.spaceLocator(n="left_toe")]
+        pm.matchTransform(locators[-1], chain[-1], pos=1)
+        locators[-1].rotateOrder.set(2)
+
+        self.color.sel = locators
+        self.color.index = 6  # blue
+        self.color.by_index()
+
+        # right
+        root = pm.duplicate(root, n="right")[0]
+        root.tx.set(root.tx.get() * -1)
+
+        for i, loc in enumerate(locators):
+            name = loc.replace("left", "right")
+            loc = locators[i] = pm.duplicate(loc, n=name)[0]
+            loc.tx.set(loc.tx.get() * -1)
+
+        self.color.sel = locators
+        self.color.index = 12  # red right
+        self.color.by_index()
 
         pm.select(cl=1)
         return
-
+    
     def _add_list_widget_item(self):
         for sel in pm.ls(os=1):
             item = QListWidgetItem(str(sel))

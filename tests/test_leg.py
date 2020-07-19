@@ -296,9 +296,11 @@ class TestBothLegs(unittest.TestCase):
         self.left_leg = Rig(root, side="left", root_control=root_con)
 
         pm.select(cl=1)
-        root = pm.PyNode(
-            pm.mirrorJoint(root, mirrorYZ=1, mirrorBehavior=1)[0])
-        pm.parent(root, w=1)
+        root = pm.duplicate(root)[0]
+        root.tx.set(root.tx.get() * -1)
+        # root = pm.PyNode(
+        #     pm.mirrorJoint(root, mirrorYZ=1, mirrorBehavior=1)[0])
+        # pm.parent(root, w=1)
 
         self.right_leg = Rig(root, side="right", root_control=root_con)
 
@@ -328,6 +330,7 @@ class TestBothLegs(unittest.TestCase):
         self.assertTrue(all(rigged_legs),
                         "did not rig legs")
 
+    # @unittest.skip("")
     def test_legs_and_feet(self):
         controls = self.controls  # hip, body, root
 
@@ -372,7 +375,7 @@ class TestBothLegs(unittest.TestCase):
     def tearDownClass(cls):
         try:
             from tools.control_shapes import ControlShapes
-            json_file = __file__.split("tests")[0] + "/results/legs.json"
+            json_file = __file__.split("tests")[0] + "/results/demo.json"
             cs = ControlShapes()
             cs.load(json_file=json_file)
         except:
