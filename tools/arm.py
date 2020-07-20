@@ -3,9 +3,15 @@ from collections import OrderedDict
 
 
 class Rig:
-    def __init__(self, root, side="", root_control=""):
+    def __init__(self, root, side="", root_control="", **kwargs):
         self.side = side
         self.root_control = root_control
+
+        self.elbow_loc = None
+        for k, v in kwargs.items():
+            if k == "elbow_loc":
+                print ">>>> elbow_loc"
+                self.elbow_loc = pm.PyNode(v)
 
         self.result_chain, self.ik_chain, self.fk_chain = \
             self._joint_chains(root, side)
@@ -81,14 +87,14 @@ class Rig:
             pm.setAttr(i.v, lock=0, keyable=0, cb=1)
         return groups
 
-    @staticmethod
-    def _controls(side, result_chain, ik_chain, fk_chain):
+    def _controls(self, side, result_chain, ik_chain, fk_chain):
         arm_settings = pm.spaceLocator(n=side + "Arm_settings_CON")
         pm.matchTransform(arm_settings, result_chain["hand"], pos=1)
         pm.parentConstraint(result_chain["hand"], arm_settings, mo=1)
         pm.scaleConstraint(result_chain["hand"], arm_settings)
         controls = OrderedDict({"arm_settings": arm_settings})
 
+        # leftArm_gimbal_corr_CON
         # leftArm_gimbal_corr_CON
         name = "arm_gimbal_corr_CON" if "" == side \
             else side + "Arm_gimbal_corr_CON"
@@ -116,8 +122,11 @@ class Rig:
         # leftElbow_CON
         name = "elbow_CON" if "" == side else side + "Elbow_CON"
         elbow_ik = pm.spaceLocator(n=name)
-        pm.matchTransform(elbow_ik, ik_chain["lower"], pos=1)
-        pm.move(elbow_ik, -10, r=1, z=1)
+        try:
+            pm.matchTransform(elbow_ik, self.elbow_loc)
+        except:
+            pm.matchTransform(elbow_ik, ik_chain["lower"], pos=1)
+            pm.move(elbow_ik, -10, r=1, z=1)
         controls["elbow"] = elbow_ik
 
         # leftArm_CON
@@ -834,6 +843,30 @@ class Rig:
             global_scale.outFloat >> i
         return global_scale
 
+    @staticmethod
+    def stretchable_arm(name, targets, control):
+        stretch_toggle = \
+            pm.createNode("blendColors", n=name + "_stretchToggle")
+
+        for trg, attr in zip(targets, "RGB"):
+            src, = trg.inputs(p=1)
+
+            src >> stretch_toggle.attr("color1" + attr)
+
+            value = stretch_toggle.attr("color1" + attr).get()
+            stretch_toggle.attr("color2" + attr).set(value)
+
+            stretch_toggle.attr("output" + attr) >> trg
+
+        attr = "stretchable"
+        attribute_exists = pm.attributeQuery(attr, node=control, exists=1)
+        if not attribute_exists:
+            pm.addAttr(control, ln="stretchable",
+                       k=1, at="float", min=0, max=1, dv=1)
+
+        control.stretchable >> stretch_toggle.blender
+        return True
+
     def ik(self):
         arm_group = self.groups["arm"]
         base_ik_const_group = self.groups["base_ik"]
@@ -944,25 +977,12 @@ class Rig:
                 pm.setAttr(snap_elbow_loc.attr(at + ax), lock=1, keyable=0)
         pm.setAttr(snap_elbow_loc.v, lock=1, keyable=0)
 
-        # # add stretch attribute
-        # elbow_stretch_choice = self.snap_nodes["stretch_blend"]
-        # mid_sdk, = elbow_stretch_choice.color2R.inputs()
-        # end_sdk, = elbow_stretch_choice.color2G.inputs()
-        #
-        # pm.addAttr(arm_control, ln="stretch", k=1, at="float", min=0, max=1)
-        # ik_stretch_choice = \
-        #     pm.createNode("blendColors", n=side + "Arm_IK_stretchChoice")
-        #
-        # arm_control.stretch >> ik_stretch_choice.blender
-        # mid_sdk.output >> ik_stretch_choice.color1R
-        # end_sdk.output >> ik_stretch_choice.color1G
-        #
-        # ik_stretch_choice.outputR >> elbow_stretch_choice.color2R
-        # ik_stretch_choice.outputG >> elbow_stretch_choice.color2G
-        #
-        # ik_stretch_choice.color2R.set(ik_stretch_choice.color1R.get())
-        # ik_stretch_choice.color2G.set(ik_stretch_choice.color1G.get())
-        # ik_stretch_choice.color2B.set(0)
+        params = {
+            "name": name,
+            "targets": [self.ik_chain[k].tx for k in ["lower", "hand"]],
+            "control": arm_control
+        }
+        self.stretchable_arm(**params)
 
         # hybrid elbow
         hybrid_controls = self.hybrid_elbow(ik_const_group)
