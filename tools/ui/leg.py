@@ -118,21 +118,6 @@ class MyWindow(QWidget):
         return
 
     def match(self):
-        # joints
-        left_chain = pm.PyNode("left")
-        left_chain = [left_chain] + left_chain.getChildren(ad=1)[::-1]
-
-        right_chain = pm.PyNode("right")
-        right_chain = [right_chain] + right_chain.getChildren(ad=1)[::-1]
-
-        for right, left in zip(right_chain, left_chain):
-            pos = left.getTranslation(space="world")
-            pos[0] = pos[0] * -1
-            right.setTranslation(pos, space="world")
-
-            size = left.radius.get()
-            right.radius.set(size)
-
         # locators
         left_locators = pm.ls("left_*", type="transform")
         right_locators = pm.ls("right_*", type="transform")
@@ -152,10 +137,24 @@ class MyWindow(QWidget):
 
             size = left.localScale.get()
             right.localScale.set(size)
+
+        # joints
+        left_chain = pm.PyNode("left")
+        left_chain = [left_chain] + left_chain.getChildren(ad=1)[::-1]
+
+        right_chain = pm.PyNode("right")
+        right_chain = [right_chain] + right_chain.getChildren(ad=1)[::-1]
+
+        for right, left in zip(right_chain, left_chain):
+            pos = left.getTranslation(space="world")
+            pos[0] = pos[0] * -1
+            right.setTranslation(pos, space="world")
+
+            size = left.radius.get()
+            right.radius.set(size)
         return
     
-    @staticmethod
-    def create_guides():
+    def create_guides(self):
         # left
         pm.select(cl=1)
         root = pm.joint(p=[8.93, 83.9, 0.93], n="left")  # thigh
