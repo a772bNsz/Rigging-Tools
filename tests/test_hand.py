@@ -455,7 +455,7 @@ class TestArmHandConnection(TestArm):
         pm.makeIdentity(thumb, apply=1, r=1)
         pm.delete(up_loc, aim_loc)
 
-    @unittest.skip("")
+    # @unittest.skip("")
     def test_connect(self):
         hand = self.hand
 
@@ -475,53 +475,6 @@ class TestArmHandConnection(TestArm):
         }
         connected = hand.connect(**params)
 
-        self.assertTrue(connected, "connection failed")
-
-    # @unittest.skip("")
-    def test_right(self):
-        from collections import OrderedDict
-
-        left_root = self.hand.result_chain["hand"]
-        super(TestArmHandConnection, self).test_right()
-
-        root = pm.mirrorJoint(left_root, mirrorYZ=1, mirrorBehavior=1,
-                              searchReplace=["left", "right"])[0]
-        pm.parent(root, w=1)
-        root = pm.PyNode(root)
-        root_con = pm.PyNode("root_transform_CON")
-
-        hand = Rig(root, side="right", root_control=root_con)
-
-        for base in root.getChildren():
-            name = base.split("right", 1)[1].split("Base", 1)[0].lower()
-
-            hand.result_chain[name] = OrderedDict()
-            chain = [base] + base.getChildren(ad=1)[::-1]
-            for i, jnt in enumerate(chain):
-                if i == 0:
-                    hand.result_chain[name]["base"] = jnt
-                    continue
-
-                hand.result_chain[name][str(i)] = jnt
-
-        names = ["thumb", "index", "middle", "ring", "pinky"]
-        fingers = hand.finger_attributes(fingers=names)
-
-        for loc in self.palm:
-            loc.tx.set(loc.tx.get() * -1)
-
-        params = {
-            "palm": self.palm,
-            "fingers": names
-        }
-        palm = hand.palm_attributes(**params)
-
-        params = {
-            "control": pm.PyNode("rightHand_result_JNT"),
-            "bind_joint": pm.PyNode("rightArm_end_bind_JNT"),
-            "settings": pm.PyNode("rightArm_settings_CON"),
-        }
-        connected = hand.connect(**params)
         self.assertTrue(connected, "connection failed")
 
     @classmethod
