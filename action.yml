@@ -1,6 +1,0 @@
-# action.yml
-name: "Maya-Test"
-description: "Runs test suite within Maya"
-runs:
-  using: "docker"
-  image: "Dockerfile"

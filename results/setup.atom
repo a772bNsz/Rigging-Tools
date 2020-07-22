@@ -1,0 +1,97 @@
+atomVersion 1.0;
+mayaVersion 2018;
+mayaSceneFile /Users/kathyhuinali/Desktop/rockstar_test/result.ma;
+timeUnit film;
+linearUnit cm;
+angularUnit deg;
+startTime 13;
+endTime 27;
+dagNode {
+  pCone1 1 1;
+  anim rotate.rotateX rotateX 0;
+  animData {
+    input time;
+    output angular;
+    weighted 0;
+    preInfinity constant;
+    postInfinity constant;
+    keys {
+      13 0 auto auto 1 0 0;
+      19 11.415426 auto auto 1 0 0;
+      27 0 auto auto 1 0 0;
+    }
+  }
+  anim rotate.rotateY rotateY 1;
+  animData {
+    input time;
+    output angular;
+    weighted 0;
+    preInfinity constant;
+    postInfinity constant;
+    keys {
+      13 0 auto auto 1 0 0;
+      19 10.152786 auto auto 1 0 0;
+      27 0 auto auto 1 0 0;
+    }
+  }
+  anim rotate.rotateZ rotateZ 2;
+  animData {
+    input time;
+    output angular;
+    weighted 1;
+    preInfinity constant;
+    postInfinity constant;
+    keys {
+      13 0 flat linear 1 0 0;
+      16 51.287032 linear flat 1 0 0;
+      19 -131.12118 flat flat 1 0 0;
+      22 -73.831704 fixed fixed 0 0 0 89.992079 70.10672 90 377.56689;
+      27 -2.4406911 flat flat 1 0 0;
+    }
+  }
+  anim translate.translateX translateX 3;
+  animData {
+    input time;
+    output linear;
+    weighted 0;
+    preInfinity constant;
+    postInfinity constant;
+    keys {
+      13 32.545374 auto auto 1 0 0;
+      16 9.1922988 auto auto 1 0 0;
+      19 7.4690568 auto auto 1 0 0;
+      22 16.147648 auto auto 1 0 0;
+      27 32.545374 auto auto 1 0 0;
+    }
+  }
+  anim translate.translateY translateY 4;
+  animData {
+    input time;
+    output linear;
+    weighted 0;
+    preInfinity constant;
+    postInfinity constant;
+    keys {
+      13 -3.7114009 auto auto 1 0 0;
+      16 7.3459181 auto auto 1 0 0;
+      19 20.752832 auto auto 1 0 0;
+      22 5.7356468 auto auto 1 0 0;
+      27 -3.7114009 auto auto 1 0 0;
+    }
+  }
+  anim translate.translateZ translateZ 5;
+  animData {
+    input time;
+    output linear;
+    weighted 0;
+    preInfinity constant;
+    postInfinity constant;
+    keys {
+      13 -5.2621134 auto auto 1 0 0;
+      16 19.470121 auto auto 1 0 0;
+      19 -10.562566 auto auto 1 0 0;
+      22 2.4632864 auto auto 1 0 0;
+      27 -5.2621134 auto auto 1 0 0;
+    }
+  }
+}

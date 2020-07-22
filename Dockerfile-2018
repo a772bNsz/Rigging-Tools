@@ -1,7 +1,0 @@
-FROM a772bnsz/maya:2018 AS MAYA
-
-WORKDIR /root/workdir
-
-COPY ./ /root/workdir
-
-ENTRYPOINT ["./entrypoint.sh"]

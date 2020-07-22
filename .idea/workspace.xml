@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="24174826-ba52-4cf3-a112-80a47c69d3eb" name="Default Changelist" comment="" />
-    <list id="0341b4c9-020d-4ff2-9e00-eb27bebb2e9a" name="dockerfile and entrypoint script for local testing" comment="--" />
-    <list id="63d0e2a9-c881-4a4a-9c2b-c7fc8effa04e" name="Revert &quot;first unit test, used old script&quot;" comment="Revert &quot;first unit test, used old script&quot;&#10;&#10;This reverts commit 6a12a6ec" />
+    <list default="true" id="24174826-ba52-4cf3-a112-80a47c69d3eb" name="Default Changelist" comment="">
+      <change beforePath="$PROJECT_DIR$/tests/test_arm.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_arm.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tools/ui/neck.py" beforeDir="false" afterPath="$PROJECT_DIR$/tools/ui/neck.py" afterDir="false" />
+    </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -21,7 +22,7 @@
   <component name="Git.Settings">
     <option name="RECENT_BRANCH_BY_REPOSITORY">
       <map>
-        <entry key="$PROJECT_DIR$" value="docker-spine" />
+        <entry key="$PROJECT_DIR$" value="rockstar-test" />
       </map>
     </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -38,18 +39,20 @@
   </component>
   <component name="PropertiesComponent">
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
-    <property name="com.intellij.ide.scratch.LRUPopupBuilder$1/New Scratch File" value="TEXT&#10;Python" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
+    <property name="com.intellij.ide.scratch.LRUPopupBuilder$1/New Scratch File" value="Python&#10;TEXT" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/tools/ui" />
     <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
   </component>
   <component name="RecentsManager">
-    <key name="MoveFile.RECENT_KEYS">
-      <recent name="$PROJECT_DIR$/sandbox" />
-    </key>
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/tools/ui" />
       <recent name="$PROJECT_DIR$" />
       <recent name="$PROJECT_DIR$/tools" />
       <recent name="$USER_HOME$/Library/Preferences/Autodesk/maya/2020/prefs" />
+    </key>
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/tools" />
+      <recent name="$PROJECT_DIR$/sandbox" />
     </key>
   </component>
   <component name="RunDashboard">
@@ -64,13 +67,13 @@
       </list>
     </option>
   </component>
-  <component name="RunManager" selected="MayaCharm.Maya2018">
-    <configuration name="Maya2018" type="MAYACHARM_RUN_CONFIGURATION" factoryName="MayaCharm Configuration Factory">
+  <component name="RunManager" selected="Python.scratch">
+    <configuration default="true" type="MAYACHARM_RUN_CONFIGURATION" factoryName="MayaCharm Configuration Factory">
       <option name="mayaSdkPath" value="/Applications/Autodesk/maya2020/Maya.app/Contents/bin/mayapy" />
       <option name="scriptFilePath" value="/Applications/Autodesk/maya2018/Maya.app/Contents/bin/mayapy" />
       <method v="2" />
     </configuration>
-    <configuration default="true" type="MAYACHARM_RUN_CONFIGURATION" factoryName="MayaCharm Configuration Factory">
+    <configuration name="Maya2018" type="MAYACHARM_RUN_CONFIGURATION" factoryName="MayaCharm Configuration Factory">
       <option name="mayaSdkPath" value="/Applications/Autodesk/maya2020/Maya.app/Contents/bin/mayapy" />
       <option name="scriptFilePath" value="/Applications/Autodesk/maya2018/Maya.app/Contents/bin/mayapy" />
       <method v="2" />
@@ -112,144 +115,12 @@
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
       <changelist id="24174826-ba52-4cf3-a112-80a47c69d3eb" name="Default Changelist" comment="" />
-      <changelist id="0341b4c9-020d-4ff2-9e00-eb27bebb2e9a" name="dockerfile and entrypoint script for local testing" comment="" />
+      <changelist id="" name="dockerfile and entrypoint script for local testing" comment="" />
+      <changelist id="" name="from biped" comment="" />
       <created>1581441572486</created>
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1581441572486</updated>
-    </task>
-    <task id="LOCAL-00012" summary="Revert &quot;first unit test, used old script&quot;&#10;&#10;This reverts commit 6a12a6ec">
-      <created>1586675264662</created>
-      <option name="number" value="00012" />
-      <option name="presentableId" value="LOCAL-00012" />
-      <option name="project" value="LOCAL" />
-      <updated>1586675264662</updated>
-    </task>
-    <task id="LOCAL-00013" summary="first unit test, used old script">
-      <created>1586675633967</created>
-      <option name="number" value="00013" />
-      <option name="presentableId" value="LOCAL-00013" />
-      <option name="project" value="LOCAL" />
-      <updated>1586675633967</updated>
-    </task>
-    <task id="LOCAL-00014" summary="from import ma">
-      <created>1587335359465</created>
-      <option name="number" value="00014" />
-      <option name="presentableId" value="LOCAL-00014" />
-      <option name="project" value="LOCAL" />
-      <updated>1587335359465</updated>
-    </task>
-    <task id="LOCAL-00015" summary="built pieces">
-      <created>1587336000414</created>
-      <option name="number" value="00015" />
-      <option name="presentableId" value="LOCAL-00015" />
-      <option name="project" value="LOCAL" />
-      <updated>1587336000414</updated>
-    </task>
-    <task id="LOCAL-00016" summary="from import ma">
-      <created>1587361156578</created>
-      <option name="number" value="00016" />
-      <option name="presentableId" value="LOCAL-00016" />
-      <option name="project" value="LOCAL" />
-      <updated>1587361156578</updated>
-    </task>
-    <task id="LOCAL-00017" summary="from import ma">
-      <created>1587361301060</created>
-      <option name="number" value="00017" />
-      <option name="presentableId" value="LOCAL-00017" />
-      <option name="project" value="LOCAL" />
-      <updated>1587361301060</updated>
-    </task>
-    <task id="LOCAL-00018" summary="from import ma">
-      <created>1587361319899</created>
-      <option name="number" value="00018" />
-      <option name="presentableId" value="LOCAL-00018" />
-      <option name="project" value="LOCAL" />
-      <updated>1587361319899</updated>
-    </task>
-    <task id="LOCAL-00019" summary="notes">
-      <created>1587361535984</created>
-      <option name="number" value="00019" />
-      <option name="presentableId" value="LOCAL-00019" />
-      <option name="project" value="LOCAL" />
-      <updated>1587361535984</updated>
-    </task>
-    <task id="LOCAL-00020" summary="notes">
-      <created>1587363910055</created>
-      <option name="number" value="00020" />
-      <option name="presentableId" value="LOCAL-00020" />
-      <option name="project" value="LOCAL" />
-      <updated>1587363910055</updated>
-    </task>
-    <task id="LOCAL-00021" summary="this version uses a repurpose file with existing control shapes">
-      <created>1587364077725</created>
-      <option name="number" value="00021" />
-      <option name="presentableId" value="LOCAL-00021" />
-      <option name="project" value="LOCAL" />
-      <updated>1587364077725</updated>
-    </task>
-    <task id="LOCAL-00022" summary="dockerfile for 2018">
-      <created>1587518085359</created>
-      <option name="number" value="00022" />
-      <option name="presentableId" value="LOCAL-00022" />
-      <option name="project" value="LOCAL" />
-      <updated>1587518085359</updated>
-    </task>
-    <task id="LOCAL-00023" summary="Revert &quot;dockerfile for 2018&quot;&#10;&#10;This reverts commit 0a882183">
-      <created>1587518137939</created>
-      <option name="number" value="00023" />
-      <option name="presentableId" value="LOCAL-00023" />
-      <option name="project" value="LOCAL" />
-      <updated>1587518137939</updated>
-    </task>
-    <task id="LOCAL-00024" summary="for ghactions, testing maya 2018">
-      <created>1587518175064</created>
-      <option name="number" value="00024" />
-      <option name="presentableId" value="LOCAL-00024" />
-      <option name="project" value="LOCAL" />
-      <updated>1587518175064</updated>
-    </task>
-    <task id="LOCAL-00025" summary="for ghactions, testing maya 2018">
-      <created>1587518235680</created>
-      <option name="number" value="00025" />
-      <option name="presentableId" value="LOCAL-00025" />
-      <option name="project" value="LOCAL" />
-      <updated>1587518235681</updated>
-    </task>
-    <task id="LOCAL-00026" summary="sample shows how to run maya standalone, create and save maya file">
-      <created>1587686801920</created>
-      <option name="number" value="00026" />
-      <option name="presentableId" value="LOCAL-00026" />
-      <option name="project" value="LOCAL" />
-      <updated>1587686801920</updated>
-    </task>
-    <task id="LOCAL-00027" summary="clean up">
-      <created>1587946418797</created>
-      <option name="number" value="00027" />
-      <option name="presentableId" value="LOCAL-00027" />
-      <option name="project" value="LOCAL" />
-      <updated>1587946418797</updated>
-    </task>
-    <task id="LOCAL-00028" summary="clean up">
-      <created>1588164982870</created>
-      <option name="number" value="00028" />
-      <option name="presentableId" value="LOCAL-00028" />
-      <option name="project" value="LOCAL" />
-      <updated>1588164982870</updated>
-    </task>
-    <task id="LOCAL-00029" summary="sample update">
-      <created>1588448892240</created>
-      <option name="number" value="00029" />
-      <option name="presentableId" value="LOCAL-00029" />
-      <option name="project" value="LOCAL" />
-      <updated>1588448892240</updated>
-    </task>
-    <task id="LOCAL-00030" summary="sample update">
-      <created>1588449472685</created>
-      <option name="number" value="00030" />
-      <option name="presentableId" value="LOCAL-00030" />
-      <option name="project" value="LOCAL" />
-      <updated>1588449472685</updated>
     </task>
     <task id="LOCAL-00031" summary="sample update">
       <created>1588449492274</created>
@@ -461,7 +332,140 @@
       <option name="project" value="LOCAL" />
       <updated>1589665168672</updated>
     </task>
-    <option name="localTasksCounter" value="61" />
+    <task id="LOCAL-00061" summary="removed print statement">
+      <created>1596314790078</created>
+      <option name="number" value="00061" />
+      <option name="presentableId" value="LOCAL-00061" />
+      <option name="project" value="LOCAL" />
+      <updated>1596314790078</updated>
+    </task>
+    <task id="LOCAL-00062" summary="option to disable joint orienting">
+      <created>1596314813127</created>
+      <option name="number" value="00062" />
+      <option name="presentableId" value="LOCAL-00062" />
+      <option name="project" value="LOCAL" />
+      <updated>1596314813127</updated>
+    </task>
+    <task id="LOCAL-00063" summary="arm ui">
+      <created>1596314844374</created>
+      <option name="number" value="00063" />
+      <option name="presentableId" value="LOCAL-00063" />
+      <option name="project" value="LOCAL" />
+      <updated>1596314844374</updated>
+    </task>
+    <task id="LOCAL-00064" summary="leg fixes">
+      <created>1597249508194</created>
+      <option name="number" value="00064" />
+      <option name="presentableId" value="LOCAL-00064" />
+      <option name="project" value="LOCAL" />
+      <updated>1597249508195</updated>
+    </task>
+    <task id="LOCAL-00065" summary="arm guide fixes">
+      <created>1597249537866</created>
+      <option name="number" value="00065" />
+      <option name="presentableId" value="LOCAL-00065" />
+      <option name="project" value="LOCAL" />
+      <updated>1597249537866</updated>
+    </task>
+    <task id="LOCAL-00066" summary="arm guide insert">
+      <created>1597249643488</created>
+      <option name="number" value="00066" />
+      <option name="presentableId" value="LOCAL-00066" />
+      <option name="project" value="LOCAL" />
+      <updated>1597249643488</updated>
+    </task>
+    <task id="LOCAL-00067" summary="upper arm advanced twist works better with +Y">
+      <created>1597365080452</created>
+      <option name="number" value="00067" />
+      <option name="presentableId" value="LOCAL-00067" />
+      <option name="project" value="LOCAL" />
+      <updated>1597365080452</updated>
+    </task>
+    <task id="LOCAL-00068" summary="draft2">
+      <created>1597368547170</created>
+      <option name="number" value="00068" />
+      <option name="presentableId" value="LOCAL-00068" />
+      <option name="project" value="LOCAL" />
+      <updated>1597368547170</updated>
+    </task>
+    <task id="LOCAL-00069" summary="draft2">
+      <created>1597405924108</created>
+      <option name="number" value="00069" />
+      <option name="presentableId" value="LOCAL-00069" />
+      <option name="project" value="LOCAL" />
+      <updated>1597405924108</updated>
+    </task>
+    <task id="LOCAL-00070" summary="draft2">
+      <created>1597418963803</created>
+      <option name="number" value="00070" />
+      <option name="presentableId" value="LOCAL-00070" />
+      <option name="project" value="LOCAL" />
+      <updated>1597418963803</updated>
+    </task>
+    <task id="LOCAL-00071" summary="draft2">
+      <created>1597456091746</created>
+      <option name="number" value="00071" />
+      <option name="presentableId" value="LOCAL-00071" />
+      <option name="project" value="LOCAL" />
+      <updated>1597456091746</updated>
+    </task>
+    <task id="LOCAL-00072" summary="draft2">
+      <created>1597617446853</created>
+      <option name="number" value="00072" />
+      <option name="presentableId" value="LOCAL-00072" />
+      <option name="project" value="LOCAL" />
+      <updated>1597617446854</updated>
+    </task>
+    <task id="LOCAL-00073" summary="draft2">
+      <created>1597618987382</created>
+      <option name="number" value="00073" />
+      <option name="presentableId" value="LOCAL-00073" />
+      <option name="project" value="LOCAL" />
+      <updated>1597618987383</updated>
+    </task>
+    <task id="LOCAL-00074" summary="fixed some logic">
+      <created>1597703042944</created>
+      <option name="number" value="00074" />
+      <option name="presentableId" value="LOCAL-00074" />
+      <option name="project" value="LOCAL" />
+      <updated>1597703042945</updated>
+    </task>
+    <task id="LOCAL-00075" summary="revision 2 done">
+      <created>1597711343014</created>
+      <option name="number" value="00075" />
+      <option name="presentableId" value="LOCAL-00075" />
+      <option name="project" value="LOCAL" />
+      <updated>1597711343014</updated>
+    </task>
+    <task id="LOCAL-00076" summary="sample test update">
+      <created>1598208325429</created>
+      <option name="number" value="00076" />
+      <option name="presentableId" value="LOCAL-00076" />
+      <option name="project" value="LOCAL" />
+      <updated>1598208325430</updated>
+    </task>
+    <task id="LOCAL-00077" summary="bezier limb - sketch">
+      <created>1598292687440</created>
+      <option name="number" value="00077" />
+      <option name="presentableId" value="LOCAL-00077" />
+      <option name="project" value="LOCAL" />
+      <updated>1598292687440</updated>
+    </task>
+    <task id="LOCAL-00078" summary="added body CON to fk rotation space">
+      <created>1598305830017</created>
+      <option name="number" value="00078" />
+      <option name="presentableId" value="LOCAL-00078" />
+      <option name="project" value="LOCAL" />
+      <updated>1598305830018</updated>
+    </task>
+    <task id="LOCAL-00079" summary="ignore results">
+      <created>1598387460439</created>
+      <option name="number" value="00079" />
+      <option name="presentableId" value="LOCAL-00079" />
+      <option name="project" value="LOCAL" />
+      <updated>1598387460439</updated>
+    </task>
+    <option name="localTasksCounter" value="80" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -476,23 +480,23 @@
         </entry>
       </map>
     </option>
+    <option name="RECENT_FILTERS">
+      <map>
+        <entry key="Paths">
+          <value>
+            <list>
+              <RecentGroup>
+                <option name="FILTER_VALUES">
+                  <option value="file:$PROJECT_DIR$/tools/ui/shapes.py" />
+                </option>
+              </RecentGroup>
+            </list>
+          </value>
+        </entry>
+      </map>
+    </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="sample shows how to run maya standalone, create and save maya file" />
-    <MESSAGE value="clean up" />
-    <MESSAGE value="sample update" />
-    <MESSAGE value="entrypoint runs all tests" />
-    <MESSAGE value="using a772bnsz docker hub repos" />
-    <MESSAGE value="start" />
-    <MESSAGE value="skip squash stretch" />
-    <MESSAGE value="spine branched from local" />
-    <MESSAGE value="pymel init = 0" />
-    <MESSAGE value="pymel init = 1" />
-    <MESSAGE value="commandline unittest directly invokes" />
-    <MESSAGE value="draft 1" />
-    <MESSAGE value="spine" />
-    <MESSAGE value="test modules" />
-    <MESSAGE value="methods and test method skeleton" />
     <MESSAGE value="setup controls" />
     <MESSAGE value="_advanced_twist()" />
     <MESSAGE value="_squash_stretch()" />
@@ -503,7 +507,22 @@
     <MESSAGE value="chmod on localentrypoint.sh" />
     <MESSAGE value="spine.Rig()" />
     <MESSAGE value="dockerfile and entrypoint script for local testing" />
-    <option name="LAST_COMMIT_MESSAGE" value="dockerfile and entrypoint script for local testing" />
+    <MESSAGE value="removed print statement" />
+    <MESSAGE value="option to disable joint orienting" />
+    <MESSAGE value="arm ui" />
+    <MESSAGE value="leg fixes" />
+    <MESSAGE value="arm guide fixes" />
+    <MESSAGE value="arm guide insert" />
+    <MESSAGE value="upper arm advanced twist works better with +Y" />
+    <MESSAGE value="save" />
+    <MESSAGE value="draft2" />
+    <MESSAGE value="fixed some logic" />
+    <MESSAGE value="revision 2 done" />
+    <MESSAGE value="sample test update" />
+    <MESSAGE value="bezier limb - sketch" />
+    <MESSAGE value="added body CON to fk rotation space" />
+    <MESSAGE value="ignore results" />
+    <option name="LAST_COMMIT_MESSAGE" value="ignore results" />
   </component>
   <component name="WindowStateProjectService">
     <state x="-1273" y="334" key="#com.intellij.fileTypes.FileTypeChooser" />
