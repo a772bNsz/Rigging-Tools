@@ -2,3 +2,5 @@
 /tests/ma/*.ma
 /tests/*.json
 /tools/shape_thumbnails
+/tools/ui_template.py
+/tools/ui/ui_template.ui
