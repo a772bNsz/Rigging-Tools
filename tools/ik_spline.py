@@ -178,7 +178,26 @@ class Rig:
             math_nodes[1].outFloat >> jnt.sx
             math_nodes[3].outFloat >> jnt.sy
             math_nodes[3].outFloat >> jnt.sz
-        return
+        return math_nodes
+
+    @staticmethod
+    def _stretchable_spine(target, control, name):
+        stretch_toggle = \
+            pm.createNode("blendTwoAttr", n=name + "_stretchToggle")
+
+        source, = target.inputs(p=1)
+        source >> stretch_toggle.input[1]
+        stretch_toggle.input[0].set(stretch_toggle.input[1].get())
+        stretch_toggle.output >> target
+
+        attr = "stretchable"
+        attribute_exists = pm.attributeQuery(attr, node=control, exists=1)
+        if not attribute_exists:
+            pm.addAttr(control, ln="stretchable",
+                       k=1, at="float", min=0, max=1, dv=1)
+
+        control.stretchable >> stretch_toggle.attributesBlender
+        return True
 
     def guts(self):
         """
@@ -187,7 +206,15 @@ class Rig:
         global scale
         """
         self._advanced_twist()
-        self._squash_stretch()
+        math_nodes = self._squash_stretch()
+
+        stretch_percent = math_nodes[1].floatA
+        params = {
+            "target": stretch_percent,
+            "control": pm.PyNode("chest_CON"),
+            "name": "spine"
+        }
+        self._stretchable_spine(**params)
 
         children = [
             "spine_HDL",

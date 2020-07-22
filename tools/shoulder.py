@@ -164,7 +164,33 @@ class Rig:
 
         self.stretch_ik(handle, start, end, name)
         self.stretch_ik_nodes["length_end"].setParent(locator)
+
+        params = {
+            "target": self.result_chain["end"].tx,
+            "control": shoulder_con,
+            "name": side + "Shoulder"
+        }
+        self._stretchable_neck(**params)
         return self.ik_nodes
+
+    @staticmethod
+    def _stretchable_neck(target, control, name):
+        stretch_toggle = \
+            pm.createNode("blendTwoAttr", n=name + "_stretchToggle")
+
+        source, = target.inputs(p=1)
+        source >> stretch_toggle.input[1]
+        stretch_toggle.input[0].set(stretch_toggle.input[1].get())
+        stretch_toggle.output >> target
+
+        attr = "stretchable"
+        attribute_exists = pm.attributeQuery(attr, node=control, exists=1)
+        if not attribute_exists:
+            pm.addAttr(control, ln="stretchable",
+                       k=1, at="float", min=0, max=1, dv=1)
+
+        control.stretchable >> stretch_toggle.attributesBlender
+        return True
 
     def connect(self, name="shoulder", control=None):
         n = name if "" == self.side else self.side + "Shoulder"

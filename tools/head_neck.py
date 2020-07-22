@@ -94,7 +94,7 @@ class Rig:
         pm.matchTransform("neck_OFS", neck_base_bind, rot=1)
         # pm.matchTransform("head_OFS", neck_end_bind, rot=1)
         pm.parentConstraint("neck_CON", neck_base_bind)
-        # pm.parentConstraint("head_CON", neck_end_bind)
+        pm.parentConstraint("head_CON", neck_end_bind)
 
         # advanced spline twist settings
         neck_hdl = pm.PyNode("neck_HDL")
@@ -139,6 +139,25 @@ class Rig:
         result_chain = [result_chain] + result_chain.getChildren(ad=1)
         for jnt in result_chain:
             math_nodes[1].outFloat >> jnt.sx
+        return math_nodes
+
+    @staticmethod
+    def _stretchable_neck(target, control, name):
+        stretch_toggle = \
+            pm.createNode("blendTwoAttr", n=name + "_stretchToggle")
+
+        source, = target.inputs(p=1)
+        source >> stretch_toggle.input[1]
+        stretch_toggle.input[0].set(stretch_toggle.input[1].get())
+        stretch_toggle.output >> target
+
+        attr = "stretchable"
+        attribute_exists = pm.attributeQuery(attr, node=control, exists=1)
+        if not attribute_exists:
+            pm.addAttr(control, ln="stretchable",
+                       k=1, at="float", min=0, max=1, dv=1)
+
+        control.stretchable >> stretch_toggle.attributesBlender
         return True
 
     def guts(self):
@@ -148,7 +167,15 @@ class Rig:
         global scale
         """
         self._advanced_twist()
-        self._squash_stretch()
+        math_nodes = self._squash_stretch()
+
+        stretch_percent = math_nodes[1].floatA
+        params = {
+            "target": stretch_percent,
+            "control": pm.PyNode("head_CON"),
+            "name": "neck"
+        }
+        self._stretchable_neck(**params)
 
         children = [
             "neck_HDL",
