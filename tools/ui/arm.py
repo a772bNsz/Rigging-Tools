@@ -82,37 +82,151 @@ class MyWindow(QWidget):
             ["_".join([side, n]) for n in ["shoulder", "arm", "hand"]]
         
         if pm.objExists(shoulder):
-            self.rebuild_shoulder(side)
-            # self.rig_shoulder()
+            if pm.listRelatives(shoulder, c=1):
+                # self.rebuild_shoulder(side)
+                self.rig_shoulder(side)
 
         if pm.objExists(arm):
-            self.rebuild_arm(side)
-            # self.rig_arm()
+            if pm.listRelatives(arm, c=1):
+                # self.rebuild_arm(side)
+                self.rig_arm(side)
 
         if pm.objExists(hand):
-            self.rebuild_hand(side)
-            # self.rig_hand()
+            finger_roots = pm.listRelatives(hand, c=1)
+            is_finger = False
+            for root in finger_roots:
+                is_finger = root.getChildren()
+                if is_finger:
+                    break
 
-        #TODO: delete locators
+            if is_finger:
+                # self.rebuild_hand(side)
+                self.rig_hand(side)
+
+        try:
+            guides = [side + "_" + i for i in ["shoulder", "arm", "elbow"]]
+            pm.delete(guides)
+        except:
+            pass
         return
+
+    def rig_hand(self, side):
+        root = self.rebuild_hand(side)
+
+        controls = self.get_spaces()
+        root_control = controls[-1]
+
+        from tools.hand import Rig
+        hand = Rig(root, side=side, root_control=root_control)
+
+        names = []
+        for finger_root in root.getChildren():
+            name = finger_root.rsplit("_", 1)[1]
+            hand.finger_chain(finger_root, name=name, orient=0)
+            names += [name]
+        hand.finger_attributes(fingers=names)
+
+        palm_locators = \
+            [pm.PyNode(side + "_" + i) for i in ["middle", "inner", "outer"]]
+        params = {
+            "palm": palm_locators,
+            "fingers": names
+        }
+        palm = hand.palm_attributes(**params)
+
+        params = {
+            "control": pm.PyNode(side + "Hand_result_JNT"),
+            "bind_joint": pm.PyNode(side + "Arm_end_bind_JNT"),
+            "settings": pm.PyNode(side + "Arm_settings_CON"),
+        }
+        connected = hand.connect(**params)
+
+        # resets the UI for the right side
+        try:
+            pm.select("chest_CON")
+        except:
+            pass
+
+        self.update_spaces(root=1)
+        return
+
+    def rig_arm(self, side):
+        chain = self.rebuild_arm(side)
+        root = chain[0]
+
+        controls = self.get_spaces()
+        root_control = controls[-1]
+
+        elbow_loc = pm.PyNode(side + "_elbow")
+
+        from tools.arm import Rig
+        arm = Rig(root, side=side, root_control=root_control,
+                  elbow_loc=elbow_loc)
+        arm.twist()
+        arm.ikfk_switch()
+        arm.fk()
+        arm.ik()
+        arm.connect(controls)
+
+        pm.select(cl=1)
+        self.update_spaces(root=1)
+        return
+
+    def rig_shoulder(self, side):
+        root, end = self.rebuild_shoulder(side)
+
+        control, root_control = self.get_spaces()
+
+        from tools.shoulder import Rig
+        shoulder = Rig(root, side=side, root_control=root_control)
+        shoulder.ik()
+        shoulder.connect(control=control)
+
+        pm.select(side + "Shoulder_attach_GRP")
+        self.update_spaces(root=1)
+        return
+
+    def update_spaces(self, root=1):
+        selection = pm.ls(os=1)
+
+        i = self.ui.space_switch_lsw.count()
+        i = i if root == 0 else i - 1
+
+        for e in range(i):
+            item = self.ui.space_switch_lsw.item(e)
+            item.setSelected(1)
+        self._minus_list_widget_item()
+
+        pm.select(selection)
+        self._add_list_widget_item()
+        return
+
+    def get_spaces(self):
+        controls = []
+        i = self.ui.space_switch_lsw.count()
+        for e in range(i):
+            item = self.ui.space_switch_lsw.item(e)
+            control = pm.PyNode(item.text())
+            controls += [control]
+        return controls
 
     @staticmethod
     def rebuild_hand(side):
-        guide_start = pm.PyNode("_".join([side, "hand"]))
-        finger_guide_roots = guide_start.getChildren()
+        pm.delete(pm.listConnections(side + "_aim", destination=1),
+                  side + "_aim")
 
-        for root in finger_guide_roots:
-            pm.select(cl=1)
+        root = pm.PyNode("_".join([side, "hand"]))
+        root.setParent(None)
 
-            chain = []
-            guides = [root] + root.getChildren(ad=1)[::-1]
-            for guide in guides:
-                pos = guide.getTranslation(ws=1)
-                chain += [pm.joint(p=pos)]
+        for finger_root in root.getChildren():
+            if finger_root.endswith("thumb"):
+                pm.makeIdentity(finger_root, a=1, r=1)
+            else:
+                pm.joint(finger_root, e=1, oj="xyz", sao="ydown", ch=1, zso=1)
 
-            pm.joint(chain, e=1, oj="xyz", sao="ydown", ch=1, zso=1)
-            chain[-1].jointOrient.set(0, 0, 0)
-        return
+                tip_joint = finger_root.getChildren(ad=1)[0]
+                tip_joint.jointOrient.set(0, 0, 0)
+        return root
 
     @staticmethod
     def rebuild_arm(side):
@@ -131,7 +245,18 @@ class MyWindow(QWidget):
         chain[-1].ty.set(0)
         chain[-1].tz.set(0)
 
+        chain[0].rename(guide_start)
         pm.joint(chain, e=1, oj="xyz", sao="ydown", ch=1, zso=1)
+
+        if side == "right":
+            chain[0].r.set(180, -180, 0)
+            pm.makeIdentity(chain, r=1, a=1)
+
+            for jnt in chain:
+                jnt.sx.set(-1)
+            pm.makeIdentity(chain, s=1, a=1)
+
+        chain[-1].jointOrient.set(0, 0, 0)
         return chain
 
     @staticmethod
@@ -145,7 +270,9 @@ class MyWindow(QWidget):
             pos = guide.getTranslation(ws=1)
             chain += [pm.joint(p=pos)]
 
+        chain[0].rename(guide_start)
         pm.joint(chain, e=1, oj="xyz", sao="yup", ch=1, zso=1)
+        chain[-1].jointOrient.set(0, 0, 0)
         return chain
 
     def match(self):
@@ -171,9 +298,11 @@ class MyWindow(QWidget):
             size = left.localScale.get()
             right.localScale.set(size)
 
-            if "aim" not in str(left):
-                left.rotate.set(0, 0, 0)
-                right.rotate.set(0, 0, 0)
+            if "aim" in str(left):
+                continue
+
+            left.rotate.set(0, 0, 0)
+            right.rotate.set(0, 0, 0)
 
         # joints
         left_chain, = filter(
@@ -214,7 +343,7 @@ class MyWindow(QWidget):
         return [aim_loc, up_loc], aim_const
 
     def create_guides(self):
-        # left
+        # JOINTS - left
         arm = pm.joint(p=[8.91, 142.2, 0.97], n="left_shoulder")  # shoulder
         pm.joint(p=[17.19, 138.49, 0.94], n="left_arm")  # upper arm
         pm.joint(p=[40.69, 138.49, 1.44])  # lower arm
@@ -261,8 +390,18 @@ class MyWindow(QWidget):
             tip_joint = finger_root.getChildren(ad=1)[0]
             tip_joint.jointOrient.set(0, 0, 0)
 
+        # JOINTS - right
+        pm.PyNode(pm.mirrorJoint(arm, mirrorYZ=1, mirrorBehavior=1,
+                                 searchReplace=["left", "right"])[0])
+
+        # ORBIT - left
         aim_locators, aim_const = self.orbit_guide("left", thumb)
 
+        # ORBIT - right
+        thumb = pm.PyNode("right_thumb")
+        aim_locators, aim_const = self.orbit_guide("right", thumb)
+
+        # LOCATORS - left
         locators = [pm.spaceLocator(n="left_elbow")]
         pm.matchTransform(locators[-1], chain[2], pos=1)
         pm.select(cl=1)
@@ -280,17 +419,13 @@ class MyWindow(QWidget):
         self.color.index = 6  # blue
         self.color.by_index()
 
-        # right
+        # LOCATORS - right
         for i, loc in enumerate(locators):
-            name = loc.replace("left", "right")
-            loc = locators[i] = pm.duplicate(loc, n=name)[0]
+            # name = loc.replace("left", "right")
+            name = "right_" + loc.rsplit("_", 1)[1]
+            loc = locators[i] = pm.duplicate(loc)[0]
+            loc.rename(name)
             loc.tx.set(loc.tx.get() * -1)
-
-        pm.PyNode(pm.mirrorJoint(arm, mirrorYZ=1, mirrorBehavior=1,
-                                 searchReplace=["left", "right"])[0])
-
-        thumb = pm.PyNode("right_thumb")
-        aim_locators, aim_const = self.orbit_guide("right", thumb)
 
         self.color.sel = locators + aim_locators
         self.color.index = 12  # red right

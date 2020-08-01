@@ -90,12 +90,7 @@
         </property>
         <item>
          <property name="text">
-          <string>shoulder</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>body</string>
+          <string>chest</string>
          </property>
         </item>
         <item>
