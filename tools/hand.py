@@ -19,8 +19,9 @@ class Rig:
         self.hand_locator = None
         self.constrain_joint = None
 
-    def finger_chain(self, root, name="finger"):
-        pm.joint(root, e=1, oj="xyz", sao="ydown", ch=1, zso=1)
+    def finger_chain(self, root, name="finger", orient=1):
+        if orient:
+            pm.joint(root, e=1, oj="xyz", sao="ydown", ch=1, zso=1)
 
         result_dict = OrderedDict()
 
@@ -39,7 +40,8 @@ class Rig:
             jnt.rename("{}{}_result_JNT".format(n, i))
             result_dict[str(i)] = jnt
 
-        result_chain[-1].jointOrient.set(0, 0, 0)
+        if orient:
+            result_chain[-1].jointOrient.set(0, 0, 0)
         pm.parent(root, self.result_chain["hand"])
 
         self.result_chain[name] = result_dict
