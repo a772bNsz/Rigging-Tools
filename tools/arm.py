@@ -10,7 +10,6 @@ class Rig:
         self.elbow_loc = None
         for k, v in kwargs.items():
             if k == "elbow_loc":
-                print ">>>> elbow_loc"
                 self.elbow_loc = pm.PyNode(v)
 
         self.result_chain, self.ik_chain, self.fk_chain = \
