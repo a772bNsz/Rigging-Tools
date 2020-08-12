@@ -3,9 +3,14 @@ from collections import OrderedDict
 
 
 class Rig:
-    def __init__(self, root, side="", root_control=""):
+    def __init__(self, root, side="", root_control="", **kwargs):
         self.side = side
         self.root_control = root_control
+
+        self.hand_loc = None
+        for k, v in kwargs.items():
+            if k == "hand_loc":
+                self.hand_loc = pm.PyNode(v)
 
         name = "hand" if "" == side else side + "Hand"
         root.rename(name + "Base_result_JNT")
@@ -414,9 +419,13 @@ class Rig:
         side = self.side
         name = "hand" if "" == side else side + "Hand"
 
+        # leftHand_CON
         hand_control = pm.spaceLocator(n=name + "_CON")
-        pm.matchTransform(hand_control, self.result_chain["hand"], pos=1)
-        hand_control.ty.set(hand_control.ty.get() + 10)
+        try:
+            pm.matchTransform(hand_control, self.hand_loc)
+        except:
+            pm.matchTransform(hand_control, self.result_chain["hand"], pos=1)
+            hand_control.ty.set(hand_control.ty.get() + 10)
 
         ofs, = pm.duplicate(hand_control, po=1, n=name + "_OFS")
         hand_control.setParent(ofs)
@@ -534,5 +543,5 @@ class Rig:
                     pm.setAttr(i.attr(at + ax), lock=1, keyable=0)
             pm.setAttr(i.v, lock=0, keyable=0, cb=1)
 
-        pm.hide(self.groups["const"], self.groups["handle"])
+        pm.hide(self.groups["const"], self.groups["handle"], hand_loc)
         return hand_loc, self.constrain_joint
