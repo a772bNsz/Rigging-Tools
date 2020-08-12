@@ -105,7 +105,13 @@ class MyWindow(QWidget):
 
         try:
             guides = [side + "_" + i for i in ["shoulder", "arm", "elbow"]]
+            guides += [side + "_hand_loc"]
             pm.delete(guides)
+
+            all_joints = pm.ls("*JNT", type="joint")
+            joint_radius = all_joints[-1].radius.get()
+            for jnt in all_joints:
+                jnt.radius.set(joint_radius)
         except:
             pass
         return
@@ -116,8 +122,11 @@ class MyWindow(QWidget):
         controls = self.get_spaces()
         root_control = controls[-1]
 
+        hand_loc = pm.PyNode(side + "_hand_loc")
+
         from tools.hand import Rig
-        hand = Rig(root, side=side, root_control=root_control)
+        hand = Rig(root, side=side, root_control=root_control,
+                   hand_loc=hand_loc)
 
         names = []
         for finger_root in root.getChildren():
@@ -219,13 +228,15 @@ class MyWindow(QWidget):
         root.setParent(None)
 
         for finger_root in root.getChildren():
-            if finger_root.endswith("thumb"):
-                pm.makeIdentity(finger_root, a=1, r=1)
-            else:
-                pm.joint(finger_root, e=1, oj="xyz", sao="ydown", ch=1, zso=1)
+            pm.makeIdentity(finger_root, a=1, r=1)
 
-                tip_joint = finger_root.getChildren(ad=1)[0]
-                tip_joint.jointOrient.set(0, 0, 0)
+            if finger_root.endswith("thumb"):
+                continue
+
+            pm.joint(finger_root, e=1, oj="xyz", sao="ydown", ch=1, zso=1)
+
+            tip_joint = finger_root.getChildren(ad=1)[0]
+            tip_joint.jointOrient.set(0, 0, 0)
         return root
 
     @staticmethod
@@ -240,21 +251,15 @@ class MyWindow(QWidget):
         chain = []
         pm.select(cl=1)
         for guide in guides:
-            pos = guide.getTranslation(ws=1)
+            pos = pm.xform(guide, q=1, t=1, ws=1)
             chain += [pm.joint(p=pos)]
         chain[-1].ty.set(0)
         chain[-1].tz.set(0)
 
         chain[0].rename(guide_start)
-        pm.joint(chain, e=1, oj="xyz", sao="ydown", ch=1, zso=1)
 
-        if side == "right":
-            chain[0].r.set(180, -180, 0)
-            pm.makeIdentity(chain, r=1, a=1)
-
-            for jnt in chain:
-                jnt.sx.set(-1)
-            pm.makeIdentity(chain, s=1, a=1)
+        if side == "left":
+            pm.joint(chain, e=1, oj="xyz", sao="ydown", ch=1, zso=1)
 
         chain[-1].jointOrient.set(0, 0, 0)
         return chain
@@ -267,7 +272,8 @@ class MyWindow(QWidget):
         chain = []
         pm.select(cl=1)
         for guide in [guide_start, guide_end]:
-            pos = guide.getTranslation(ws=1)
+            # pos = guide.getTranslation(ws=1)
+            pos = pm.xform(guide, q=1, t=1, ws=1)
             chain += [pm.joint(p=pos)]
 
         chain[0].rename(guide_start)
@@ -291,7 +297,8 @@ class MyWindow(QWidget):
                 self.color.index = 12  # red right
                 self.color.by_index()
 
-            pos = left.getTranslation(space="world")
+            # pos = left.getTranslation(space="world")
+            pos = pm.xform(left, q=1, t=1, ws=1)
             pos[0] = pos[0] * -1
             right.setTranslation(pos, space="world")
 
@@ -299,6 +306,12 @@ class MyWindow(QWidget):
             right.localScale.set(size)
 
             if "aim" in str(left):
+                rot = pm.xform(left, q=1, ro=1)
+                rot[0] -= 180
+                rot[1] *= -1
+                rot[2] *= -1
+
+                right.rotate.set(rot)
                 continue
 
             left.rotate.set(0, 0, 0)
@@ -316,7 +329,8 @@ class MyWindow(QWidget):
                       right_chain.getChildren(ad=1, type="joint")[::-1]
 
         for right, left in zip(right_chain, left_chain):
-            pos = left.getTranslation(space="world")
+            # pos = left.getTranslation(space="world")
+            pos = pm.xform(left, q=1, t=1, ws=1)
             pos[0] = pos[0] * -1
             right.setTranslation(pos, space="world")
 
@@ -340,6 +354,7 @@ class MyWindow(QWidget):
                                      worldUpType="objectRotation",
                                      worldUpVector=[0, 1, 0],
                                      worldUpObject=up_loc)
+        up_loc.hide()
         return [aim_loc, up_loc], aim_const
 
     def create_guides(self):
@@ -397,13 +412,13 @@ class MyWindow(QWidget):
         # ORBIT - left
         aim_locators, aim_const = self.orbit_guide("left", thumb)
 
-        # ORBIT - right
-        thumb = pm.PyNode("right_thumb")
-        aim_locators, aim_const = self.orbit_guide("right", thumb)
-
         # LOCATORS - left
         locators = [pm.spaceLocator(n="left_elbow")]
         pm.matchTransform(locators[-1], chain[2], pos=1)
+        pm.select(cl=1)
+
+        locators += [pm.spaceLocator(n="left_hand_loc")]
+        pm.matchTransform(locators[-1], chain[3], pos=1)
         pm.select(cl=1)
 
         locators += [pm.spaceLocator(n="left_middle")]
@@ -419,10 +434,13 @@ class MyWindow(QWidget):
         self.color.index = 6  # blue
         self.color.by_index()
 
+        # ORBIT - right
+        thumb = pm.PyNode("right_thumb")
+        aim_locators, aim_const = self.orbit_guide("right", thumb)
+
         # LOCATORS - right
         for i, loc in enumerate(locators):
-            # name = loc.replace("left", "right")
-            name = "right_" + loc.rsplit("_", 1)[1]
+            name = loc.replace("left", "right")
             loc = locators[i] = pm.duplicate(loc)[0]
             loc.rename(name)
             loc.tx.set(loc.tx.get() * -1)

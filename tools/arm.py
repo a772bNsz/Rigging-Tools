@@ -392,6 +392,11 @@ class Rig:
 
         pm.parent(twist_group, self.groups["dont_touch"])
 
+        twist_group.hide()
+        for k in ["upper", "lower"]:
+            self.twist_nodes[k]["handle"].hide()
+            self.twist_nodes[k]["curve"].hide()
+
         for at in "trs":
             for ax in "xyz":
                 pm.setAttr(twist_group.attr(at + ax), lock=1, keyable=0)
