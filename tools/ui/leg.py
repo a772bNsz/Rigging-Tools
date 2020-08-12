@@ -115,6 +115,7 @@ class MyWindow(QWidget):
         leg.ik_foot()
 
         pm.delete(knee_loc)
+        pm.select(cl=1)
         return
 
     def match(self):

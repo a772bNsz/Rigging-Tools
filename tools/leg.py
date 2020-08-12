@@ -306,11 +306,8 @@ class Rig(Foot):
 
     def _controls(self, side, result_chain, ik_chain, fk_chain):
         leg_settings = pm.spaceLocator(n=side + "Leg_settings_CON")
-        const = pm.parentConstraint(result_chain["foot"], leg_settings)
-
-        if side == "right":
-            parent_constraint = str(const) + ".target[0].targetOffsetRotateY"
-            pm.setAttr(parent_constraint, 180)
+        pm.matchTransform(leg_settings, result_chain["foot"], pos=1)
+        const = pm.parentConstraint(result_chain["foot"], leg_settings, mo=1)
 
         pm.scaleConstraint(result_chain["foot"], leg_settings)
         controls = {"leg_settings": leg_settings}
