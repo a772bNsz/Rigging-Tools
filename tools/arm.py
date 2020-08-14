@@ -293,8 +293,8 @@ class Rig:
         params = {
             "oj": "xyz",  # joint orientation
             "sao": "ydown",  # secondary axis orientation
-            "up_axis": 3,  # +z
-            "up_vectors": [[0, 0, 1]] * 2,
+            "up_axis": 0,  # +y, #3,  # +z
+            "up_vectors": [[0, 1, 0]] * 2,  # [[0, 0, 1]] * 2,
             "curve": curve,
             "chain": chain,
             "name": name,
