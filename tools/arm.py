@@ -164,7 +164,7 @@ class Rig:
         return chain
 
     @staticmethod
-    def ik_spline(oj, sao, up_axis, up_vectors, curve, chain, name="",
+    def ik_spline(oj, sao, up_vectors, curve, chain, name="", up_axis=None,
                   start_bind=None, end_bind=None):
         root, end = chain[0], chain[-1]
 
@@ -195,14 +195,14 @@ class Rig:
         # advanced twist settings
         upv1, upv2 = up_vectors
 
-        if not up_axis:
+        if up_axis is None:
             axis_direction = {
                 "down": "Positive",
                 "up": "Negative"
             }
 
             # Positive Z / Negative Y
-            enum = " ".join(axis_direction[sao[1:]], oj[-1]).title()
+            enum = " ".join([axis_direction[sao[1:]], oj[-1]]).title()
 
             # spline handle up axis enum list
             handle_up_axis_enums = pm.attributeQuery("dWorldUpAxis",
