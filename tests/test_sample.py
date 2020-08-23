@@ -12,6 +12,9 @@ maya_version = versions.current()
 class SampleTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        print ">>>>> SETUP"
+
+    def setUp(self):
         pm.newFile()
 
     @unittest.skipIf(20190000 != maya_version, "test_version_is_2019")
