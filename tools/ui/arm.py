@@ -191,7 +191,11 @@ class MyWindow(QWidget):
         shoulder.ik()
         shoulder.connect(control=control)
 
-        pm.select(side + "Shoulder_attach_GRP")
+        try:
+            pm.select("body_CON")
+        except:
+            pass
+        pm.select(side + "Shoulder_attach_GRP", add=1)
         self.update_spaces(root=1)
         return
 
