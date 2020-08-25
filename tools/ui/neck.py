@@ -147,6 +147,11 @@ class MyWindow(QtWidgets.QWidget):
         neck = head_neck.Rig(root)
         neck.ik_spline()
         neck.setup_controls()
+
+        #TODO: add neck_CON to space switch
+        print ">>", pm.ls(sl=1)
+        # self._add_listwidgetitem()
+
         neck.guts()
         neck.connect("chest_CON")
         neck.space_switch(controls)
