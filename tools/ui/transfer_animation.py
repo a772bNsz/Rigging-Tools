@@ -1,6 +1,6 @@
 """
 import sys
-pth = r"PATH/rockstar_test"
+pth = r"PATH/rockstar"
 if pth not in sys.path:
     sys.path.append(pth)
     print ">> Added:", pth
